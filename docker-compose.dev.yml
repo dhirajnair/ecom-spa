@@ -1,0 +1,62 @@
+version: '3.8'
+
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  # PostgreSQL Database (same as production)
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # Product Service (Development mode)
+  product-service:
+    build:
+      context: ./backend/product-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/product-service/app:/app/app:ro
+      - ./backend/shared:/app/shared:ro
+    environment:
+      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_products
+      - PORT=8001
+      - JWT_SECRET_KEY=dev-secret-key
+      - PYTHONPATH=/app
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+
+  # Cart Service (Development mode)
+  cart-service:
+    build:
+      context: ./backend/cart-service
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/cart-service/app:/app/app:ro
+      - ./backend/shared:/app/shared:ro
+    environment:
+      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_carts
+      - PORT=8002
+      - JWT_SECRET_KEY=dev-secret-key
+      - PRODUCT_SERVICE_URL=http://product-service:8001/api
+      - PYTHONPATH=/app
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
+
+  # Frontend Development Server
+  frontend-dev:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: ecom-frontend-dev
+    environment:
+      - REACT_APP_API_GATEWAY_URL=http://localhost:3001/api
+      - REACT_APP_PRODUCT_SERVICE_URL=http://localhost:8001/api
+      - REACT_APP_CART_SERVICE_URL=http://localhost:8002/api
+      - CHOKIDAR_USEPOLLING=true
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    depends_on:
+      - api-gateway
+    networks:
+      - ecom-network

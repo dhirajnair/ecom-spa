@@ -1,0 +1,27 @@
+-- Initialize PostgreSQL databases for microservices
+
+-- Create databases
+CREATE DATABASE ecom_products;
+CREATE DATABASE ecom_carts;
+
+-- Create user
+CREATE USER ecom WITH PASSWORD 'ecom123';
+
+-- Grant privileges
+GRANT ALL PRIVILEGES ON DATABASE ecom_products TO ecom;
+GRANT ALL PRIVILEGES ON DATABASE ecom_carts TO ecom;
+
+-- Connect to each database and grant schema privileges
+\c ecom_products;
+GRANT ALL ON SCHEMA public TO ecom;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ecom;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ecom;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ecom;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ecom;
+
+\c ecom_carts;
+GRANT ALL ON SCHEMA public TO ecom;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO ecom;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO ecom;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO ecom;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ecom;

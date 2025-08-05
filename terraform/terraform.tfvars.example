@@ -1,0 +1,36 @@
+# Copy this file to terraform.tfvars and update the values
+
+# Project Configuration
+project_name = "ecom-spa"
+environment  = "dev"
+
+# AWS Configuration
+aws_region = "us-west-2"
+
+# Networking
+vpc_cidr = "10.0.0.0/16"
+
+# Database Configuration
+db_instance_class    = "db.t3.micro"
+db_allocated_storage = 20
+db_username         = "ecom"
+
+# Application Configuration
+jwt_secret_key = "your-super-secret-jwt-key-change-in-production"
+
+# ECS Configuration
+product_service_cpu    = 256
+product_service_memory = 512
+cart_service_cpu       = 256
+cart_service_memory    = 512
+frontend_cpu           = 256
+frontend_memory        = 512
+
+# Auto Scaling
+min_capacity     = 1
+max_capacity     = 10
+desired_capacity = 2
+
+# Domain Configuration (optional)
+# domain_name     = "your-domain.com"
+# certificate_arn = "arn:aws:acm:us-west-2:123456789012:certificate/12345678-1234-1234-1234-123456789012"
