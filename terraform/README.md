@@ -1,6 +1,6 @@
 # Terraform Infrastructure for E-commerce SPA
 
-This directory contains Terraform configurations to deploy the e-commerce microservices application to AWS using ECS Fargate, RDS PostgreSQL, and Application Load Balancer.
+This directory contains Terraform configurations to deploy the e-commerce microservices application to AWS using ECS Fargate, DynamoDB, and Application Load Balancer.
 
 ## Architecture
 
@@ -9,7 +9,7 @@ The infrastructure includes:
 - **VPC** with public/private subnets across multiple AZs
 - **Application Load Balancer** for traffic routing
 - **ECS Fargate** cluster for containerized services
-- **RDS PostgreSQL** for database persistence
+- **DynamoDB** for serverless NoSQL database
 - **ECR** repositories for container images
 - **Security Groups** for network access control
 - **CloudWatch** for logging and monitoring
@@ -95,8 +95,9 @@ terraform output ecr_repositories
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `vpc_cidr` | `10.0.0.0/16` | VPC CIDR block |
-| `db_instance_class` | `db.t3.micro` | RDS instance class |
-| `db_allocated_storage` | `20` | RDS storage (GB) |
+| `dynamodb_billing_mode` | `PAY_PER_REQUEST` | DynamoDB billing mode |
+| `enable_point_in_time_recovery` | `true` | Enable DynamoDB backups |
+| `dynamodb_deletion_protection` | `false` | Enable deletion protection |
 | `jwt_secret_key` | `change-this...` | JWT secret key |
 
 ## Deployment Process

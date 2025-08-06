@@ -47,19 +47,8 @@ resource "aws_subnet" "private" {
   }
 }
 
-# Database Subnets
-resource "aws_subnet" "database" {
-  count = length(var.availability_zones)
-
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 20)
-  availability_zone = var.availability_zones[count.index]
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-database-${count.index + 1}"
-    Type = "Database"
-  }
-}
+# Note: Database subnets removed since DynamoDB is a managed service
+# that doesn't require VPC resources
 
 # Elastic IPs for NAT Gateways
 resource "aws_eip" "nat" {
@@ -116,13 +105,7 @@ resource "aws_route_table" "private" {
   }
 }
 
-resource "aws_route_table" "database" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-database-rt"
-  }
-}
+# Database route table removed - not needed for DynamoDB
 
 # Route Table Associations
 resource "aws_route_table_association" "public" {
@@ -139,19 +122,4 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-resource "aws_route_table_association" "database" {
-  count = length(aws_subnet.database)
-
-  subnet_id      = aws_subnet.database[count.index].id
-  route_table_id = aws_route_table.database.id
-}
-
-# Database Subnet Group
-resource "aws_db_subnet_group" "main" {
-  name       = "${var.project_name}-${var.environment}-db-subnet-group"
-  subnet_ids = aws_subnet.database[*].id
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}-db-subnet-group"
-  }
-}
+# Database subnet associations and subnet group removed - not needed for DynamoDB

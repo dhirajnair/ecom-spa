@@ -1,6 +1,6 @@
 # Deployment Guide
 
-This guide covers deploying the e-commerce microservices application to different environments.
+This guide covers deploying the e-commerce microservices application to different environments using DynamoDB.
 
 ## 🏠 Local Development
 
@@ -9,7 +9,8 @@ This guide covers deploying the e-commerce microservices application to differen
 - Docker Desktop
 - Node.js 18+
 - Python 3.11+
-- PostgreSQL (optional, Docker provides this)
+- AWS CLI or boto3 (for DynamoDB)
+- DynamoDB Local (provided by Docker)
 
 ### Quick Start
 
@@ -43,12 +44,11 @@ If you prefer running services manually:
 
 ```bash
 # Using Docker
-docker run --name postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -p 5432:5432 \
-  -d postgres:15
+docker run --name dynamodb-local \
+  -p 8000:8000 \
+  -d amazon/dynamodb-local:latest
 
-# Initialize databases
+# Initialize DynamoDB tables
 make db-setup
 ```
 
@@ -58,13 +58,21 @@ make db-setup
 # Product Service
 cd backend/product-service
 pip install -r requirements.txt
-export DATABASE_URL="postgresql://ecom:ecom123@localhost:5432/ecom_products"
+export AWS_REGION="us-west-2"
+export AWS_ACCESS_KEY_ID="dummy"
+export AWS_SECRET_ACCESS_KEY="dummy"
+export DYNAMODB_ENDPOINT="http://localhost:8000"
+export PRODUCTS_TABLE_NAME="ecom-products"
 uvicorn app.main:app --reload --port 8001
 
 # Cart Service
 cd backend/cart-service
 pip install -r requirements.txt
-export DATABASE_URL="postgresql://ecom:ecom123@localhost:5432/ecom_carts"
+export AWS_REGION="us-west-2"
+export AWS_ACCESS_KEY_ID="dummy"
+export AWS_SECRET_ACCESS_KEY="dummy"
+export DYNAMODB_ENDPOINT="http://localhost:8000"
+export CARTS_TABLE_NAME="ecom-carts"
 uvicorn app.main:app --reload --port 8002
 ```
 

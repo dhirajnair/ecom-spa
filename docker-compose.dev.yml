@@ -4,10 +4,10 @@ version: '3.8'
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 services:
-  # PostgreSQL Database (same as production)
-  postgres:
+  # DynamoDB Local (same as production)
+  dynamodb-local:
     ports:
-      - "5432:5432"
+      - "8000:8000"
 
   # Product Service (Development mode)
   product-service:
@@ -18,7 +18,11 @@ services:
       - ./backend/product-service/app:/app/app:ro
       - ./backend/shared:/app/shared:ro
     environment:
-      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_products
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-west-2
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - PRODUCTS_TABLE_NAME=ecom-products
       - PORT=8001
       - JWT_SECRET_KEY=dev-secret-key
       - PYTHONPATH=/app
@@ -33,7 +37,11 @@ services:
       - ./backend/cart-service/app:/app/app:ro
       - ./backend/shared:/app/shared:ro
     environment:
-      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_carts
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-west-2
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - CARTS_TABLE_NAME=ecom-carts
       - PORT=8002
       - JWT_SECRET_KEY=dev-secret-key
       - PRODUCT_SERVICE_URL=http://product-service:8001/api

@@ -1,57 +1,182 @@
 """
-Database configuration for Cart Service
+Database configuration for Cart Service - DynamoDB
 """
 import os
-from sqlalchemy import create_engine, Column, String, Float, Integer, DateTime, ForeignKey
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+import sys
+import uuid
+from decimal import Decimal
+from typing import Optional, List, Dict, Any
 from datetime import datetime
+from boto3.dynamodb.conditions import Key
 
-# Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://ecom:ecom123@localhost:5432/ecom_carts")
+# Add shared module to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '../../shared'))
 
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+from shared.dynamodb_utils import (
+    get_dynamodb_resource, 
+    create_table_if_not_exists,
+    safe_get_item,
+    safe_put_item,
+    safe_update_item,
+    safe_delete_item,
+    safe_query
+)
 
-Base = declarative_base()
+# Table configuration
+CARTS_TABLE_NAME = os.getenv("CARTS_TABLE_NAME", "ecom-carts")
 
+def get_carts_table():
+    """Get DynamoDB carts table"""
+    dynamodb = get_dynamodb_resource()
+    return dynamodb.Table(CARTS_TABLE_NAME)
 
-class CartDB(Base):
-    """SQLAlchemy model for Cart"""
-    __tablename__ = "carts"
+def create_carts_table():
+    """Create carts table if it doesn't exist"""
+    return create_table_if_not_exists(
+        table_name=CARTS_TABLE_NAME,
+        key_schema=[
+            {
+                'AttributeName': 'user_id',
+                'KeyType': 'HASH'
+            }
+        ],
+        attribute_definitions=[
+            {
+                'AttributeName': 'user_id',
+                'AttributeType': 'S'
+            }
+        ]
+    )
 
-    id = Column(String, primary_key=True, index=True)
-    user_id = Column(String, index=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+class CartDB:
+    """DynamoDB model for Cart"""
     
-    # Relationship with cart items
-    items = relationship("CartItemDB", back_populates="cart", cascade="all, delete-orphan")
-
-
-class CartItemDB(Base):
-    """SQLAlchemy model for Cart Item"""
-    __tablename__ = "cart_items"
-
-    id = Column(String, primary_key=True, index=True)
-    cart_id = Column(String, ForeignKey("carts.id"), nullable=False)
-    product_id = Column(String, nullable=False)
-    quantity = Column(Integer, nullable=False, default=1)
-    price = Column(Float, nullable=False)
+    def __init__(self):
+        self.table = get_carts_table()
     
-    # Relationship with cart
-    cart = relationship("CartDB", back_populates="items")
-
+    def get_cart(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get cart by user ID"""
+        item = safe_get_item(self.table, {'user_id': user_id})
+        if item:
+            return self._convert_decimals(item)
+        return None
+    
+    def create_cart(self, user_id: str) -> str:
+        """Create a new cart for user"""
+        cart_id = str(uuid.uuid4())
+        cart_data = {
+            'user_id': user_id,
+            'id': cart_id,
+            'items': [],
+            'created_at': datetime.utcnow().isoformat(),
+            'updated_at': datetime.utcnow().isoformat()
+        }
+        
+        success = safe_put_item(self.table, cart_data)
+        return cart_id if success else None
+    
+    def add_item_to_cart(self, user_id: str, product_id: str, quantity: int, price: float) -> bool:
+        """Add item to cart or update quantity if exists"""
+        cart = self.get_cart(user_id)
+        
+        if not cart:
+            # Create new cart
+            cart_id = self.create_cart(user_id)
+            if not cart_id:
+                return False
+            cart = self.get_cart(user_id)
+        
+        # Find existing item
+        items = cart.get('items', [])
+        existing_item = None
+        item_index = -1
+        
+        for i, item in enumerate(items):
+            if item['product_id'] == product_id:
+                existing_item = item
+                item_index = i
+                break
+        
+        if existing_item:
+            # Update existing item
+            items[item_index]['quantity'] = existing_item['quantity'] + quantity
+        else:
+            # Add new item
+            new_item = {
+                'id': str(uuid.uuid4()),
+                'product_id': product_id,
+                'quantity': quantity,
+                'price': Decimal(str(price))
+            }
+            items.append(new_item)
+        
+        # Update cart
+        return safe_update_item(
+            self.table,
+            {'user_id': user_id},
+            'SET items = :items, updated_at = :updated_at',
+            {
+                ':items': items,
+                ':updated_at': datetime.utcnow().isoformat()
+            }
+        )
+    
+    def remove_item_from_cart(self, user_id: str, product_id: str) -> bool:
+        """Remove item from cart"""
+        cart = self.get_cart(user_id)
+        if not cart:
+            return False
+        
+        items = cart.get('items', [])
+        updated_items = [item for item in items if item['product_id'] != product_id]
+        
+        return safe_update_item(
+            self.table,
+            {'user_id': user_id},
+            'SET items = :items, updated_at = :updated_at',
+            {
+                ':items': updated_items,
+                ':updated_at': datetime.utcnow().isoformat()
+            }
+        )
+    
+    def clear_cart(self, user_id: str) -> bool:
+        """Clear all items from cart"""
+        return safe_update_item(
+            self.table,
+            {'user_id': user_id},
+            'SET items = :items, updated_at = :updated_at',
+            {
+                ':items': [],
+                ':updated_at': datetime.utcnow().isoformat()
+            }
+        )
+    
+    def calculate_cart_total(self, cart: Dict[str, Any]) -> float:
+        """Calculate total price of cart"""
+        total = 0.0
+        for item in cart.get('items', []):
+            total += float(item['price']) * item['quantity']
+        return total
+    
+    def _convert_decimals(self, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert Decimal values to float for JSON serialization"""
+        def convert_value(value):
+            if isinstance(value, Decimal):
+                return float(value)
+            elif isinstance(value, list):
+                return [convert_value(v) for v in value]
+            elif isinstance(value, dict):
+                return {k: convert_value(v) for k, v in value.items()}
+            else:
+                return value
+        
+        return {key: convert_value(value) for key, value in item.items()}
 
 def get_db():
-    """Database dependency"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+    """Database dependency - returns CartDB instance"""
+    return CartDB()
 
 def create_tables():
     """Create all tables"""
-    Base.metadata.create_all(bind=engine)
+    create_carts_table()

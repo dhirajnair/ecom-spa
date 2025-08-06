@@ -1,23 +1,17 @@
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: ecom-postgres
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+  # DynamoDB Local
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: ecom-dynamodb
+    command: ["-jar", "DynamoDBLocal.jar", "-sharedDb", "-inMemory"]
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - "8000:8000"
     networks:
       - ecom-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/shell/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,13 +23,17 @@ services:
       dockerfile: Dockerfile
     container_name: ecom-product-service
     environment:
-      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_products
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-west-2
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - PRODUCTS_TABLE_NAME=ecom-products
       - PORT=8001
       - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
     ports:
       - "8001:8001"
     depends_on:
-      postgres:
+      dynamodb-local:
         condition: service_healthy
     networks:
       - ecom-network
@@ -54,14 +52,18 @@ services:
       dockerfile: Dockerfile
     container_name: ecom-cart-service
     environment:
-      - DATABASE_URL=postgresql://ecom:ecom123@postgres:5432/ecom_carts
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-west-2
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - CARTS_TABLE_NAME=ecom-carts
       - PORT=8002
       - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
       - PRODUCT_SERVICE_URL=http://product-service:8001/api
     ports:
       - "8002:8002"
     depends_on:
-      postgres:
+      dynamodb-local:
         condition: service_healthy
       product-service:
         condition: service_healthy
@@ -122,7 +124,7 @@ services:
       retries: 3
 
 volumes:
-  postgres_data:
+  dynamodb_data:
     driver: local
 
 networks:

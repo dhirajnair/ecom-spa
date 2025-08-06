@@ -78,7 +78,7 @@ resource "aws_ecs_task_definition" "product_service" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  task_role_arn           = var.dynamodb_access_role_arn
 
   container_definitions = jsonencode([
     {
@@ -94,8 +94,12 @@ resource "aws_ecs_task_definition" "product_service" {
 
       environment = [
         {
-          name  = "DATABASE_URL"
-          value = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:${var.db_port}/ecom_products"
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "PRODUCTS_TABLE_NAME"
+          value = var.products_table_name
         },
         {
           name  = "PORT"
@@ -139,7 +143,7 @@ resource "aws_ecs_task_definition" "cart_service" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
+  task_role_arn           = var.dynamodb_access_role_arn
 
   container_definitions = jsonencode([
     {
@@ -155,8 +159,12 @@ resource "aws_ecs_task_definition" "cart_service" {
 
       environment = [
         {
-          name  = "DATABASE_URL"
-          value = "postgresql://${var.db_username}:${var.db_password}@${var.db_host}:${var.db_port}/ecom_carts"
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "CARTS_TABLE_NAME"
+          value = var.carts_table_name
         },
         {
           name  = "PORT"

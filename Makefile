@@ -61,17 +61,22 @@ clean:
 
 # Database setup
 db-setup:
-	@echo "🗃️ Setting up database..."
-	chmod +x scripts/setup-database.sh
-	./scripts/setup-database.sh
+	@echo "🗃️ Setting up DynamoDB..."
+	python scripts/setup-dynamodb.py
 
 # Database reset
 db-reset:
-	@echo "⚠️ Resetting database (this will delete all data)..."
-	docker-compose exec postgres psql -U postgres -c "DROP DATABASE IF EXISTS ecom_products;"
-	docker-compose exec postgres psql -U postgres -c "DROP DATABASE IF EXISTS ecom_carts;"
-	docker-compose exec postgres psql -U postgres -c "DROP USER IF EXISTS ecom;"
-	docker-compose exec postgres psql -U postgres -f /docker-entrypoint-initdb.d/init-db.sql
+	@echo "⚠️ Resetting DynamoDB tables (this will delete all data)..."
+	@echo "This will delete and recreate all DynamoDB tables."
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		python -c "import boto3; dynamodb = boto3.client('dynamodb', endpoint_url='http://localhost:8000', region_name='us-west-2', aws_access_key_id='dummy', aws_secret_access_key='dummy'); [dynamodb.delete_table(TableName=table) for table in ['ecom-products', 'ecom-carts']]"; \
+		echo ""; \
+		echo "Tables deleted. Run 'make db-setup' to recreate."; \
+	else \
+		echo ""; \
+		echo "Cancelled."; \
+	fi
 
 # Setup (first time)
 setup: build db-setup
@@ -111,17 +116,17 @@ prod-down:
 	docker-compose down
 
 # Service-specific commands
-postgres:
-	@echo "🐘 Starting PostgreSQL only..."
-	docker-compose up -d postgres
+dynamodb:
+	@echo "🗄️ Starting DynamoDB Local only..."
+	docker-compose up -d dynamodb-local
 
 product-service:
 	@echo "📦 Starting Product Service..."
-	docker-compose up -d postgres product-service
+	docker-compose up -d dynamodb-local product-service
 
 cart-service:
 	@echo "🛒 Starting Cart Service..."
-	docker-compose up -d postgres product-service cart-service
+	docker-compose up -d dynamodb-local product-service cart-service
 
 frontend:
 	@echo "⚛️ Starting Frontend..."
@@ -147,8 +152,8 @@ logs-cart:
 logs-frontend:
 	docker-compose logs -f frontend
 
-logs-postgres:
-	docker-compose logs -f postgres
+logs-dynamodb:
+	docker-compose logs -f dynamodb-local
 
 logs-gateway:
 	docker-compose logs -f api-gateway

@@ -39,12 +39,6 @@ data "aws_availability_zones" "available" {
 
 data "aws_caller_identity" "current" {}
 
-# Random password for RDS
-resource "random_password" "db_password" {
-  length  = 32
-  special = true
-}
-
 # VPC and Networking
 module "vpc" {
   source = "./modules/vpc"
@@ -64,19 +58,15 @@ module "security_groups" {
   vpc_id       = module.vpc.vpc_id
 }
 
-# RDS Database
-module "rds" {
-  source = "./modules/rds"
+# DynamoDB Tables
+module "dynamodb" {
+  source = "./modules/dynamodb"
   
-  project_name           = var.project_name
-  environment           = var.environment
-  vpc_id                = module.vpc.vpc_id
-  database_subnet_ids   = module.vpc.database_subnet_ids
-  security_group_ids    = [module.security_groups.rds_security_group_id]
-  db_instance_class     = var.db_instance_class
-  db_allocated_storage  = var.db_allocated_storage
-  db_username           = var.db_username
-  db_password           = random_password.db_password.result
+  project_name                = var.project_name
+  environment                = var.environment
+  billing_mode               = var.dynamodb_billing_mode
+  enable_point_in_time_recovery = var.enable_point_in_time_recovery
+  deletion_protection        = var.dynamodb_deletion_protection
 }
 
 # ECS Cluster
@@ -123,20 +113,20 @@ module "services" {
   cart_service_image    = "${module.ecr.cart_service_repository_url}:latest"
   frontend_image        = "${module.ecr.frontend_repository_url}:latest"
   
-  # Database Configuration
-  db_host              = module.rds.db_endpoint
-  db_port              = module.rds.db_port
-  db_username          = var.db_username
-  db_password          = random_password.db_password.result
+  # DynamoDB Configuration
+  products_table_name     = module.dynamodb.products_table_name
+  carts_table_name       = module.dynamodb.carts_table_name
+  dynamodb_access_role_arn = module.dynamodb.dynamodb_access_role_arn
   
   # Security Groups
   ecs_security_group_id = module.security_groups.ecs_security_group_id
   
   # Application Configuration
   jwt_secret_key = var.jwt_secret_key
+  aws_region     = var.aws_region
   
   depends_on = [
-    module.rds,
+    module.dynamodb,
     module.alb
   ]
 }

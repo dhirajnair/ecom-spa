@@ -14,16 +14,15 @@ output "private_subnet_ids" {
   value       = module.vpc.private_subnet_ids
 }
 
-# Database Outputs
-output "rds_endpoint" {
-  description = "RDS endpoint"
-  value       = module.rds.db_endpoint
-  sensitive   = true
+# DynamoDB Outputs
+output "dynamodb_table_names" {
+  description = "DynamoDB table names"
+  value       = module.dynamodb.table_names
 }
 
-output "rds_port" {
-  description = "RDS port"
-  value       = module.rds.db_port
+output "dynamodb_table_arns" {
+  description = "DynamoDB table ARNs"
+  value       = module.dynamodb.table_arns
 }
 
 # Load Balancer Outputs
@@ -80,18 +79,13 @@ output "security_groups" {
   value = {
     alb = module.security_groups.alb_security_group_id
     ecs = module.security_groups.ecs_security_group_id
-    rds = module.security_groups.rds_security_group_id
   }
 }
 
-# Database Connection String (for applications)
-output "database_urls" {
-  description = "Database connection URLs for services"
-  value = {
-    products = "postgresql://${var.db_username}:${random_password.db_password.result}@${module.rds.db_endpoint}:${module.rds.db_port}/ecom_products"
-    carts    = "postgresql://${var.db_username}:${random_password.db_password.result}@${module.rds.db_endpoint}:${module.rds.db_port}/ecom_carts"
-  }
-  sensitive = true
+# DynamoDB Access Role
+output "dynamodb_access_role_arn" {
+  description = "DynamoDB access role ARN for ECS tasks"
+  value       = module.dynamodb.dynamodb_access_role_arn
 }
 
 # Deployment Information

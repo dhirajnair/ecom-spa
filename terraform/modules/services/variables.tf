@@ -60,26 +60,25 @@ variable "frontend_image" {
   type        = string
 }
 
-# Database Configuration
-variable "db_host" {
-  description = "Database host"
+# DynamoDB Configuration
+variable "products_table_name" {
+  description = "Products DynamoDB table name"
   type        = string
 }
 
-variable "db_port" {
-  description = "Database port"
-  type        = number
-}
-
-variable "db_username" {
-  description = "Database username"
+variable "carts_table_name" {
+  description = "Carts DynamoDB table name"
   type        = string
 }
 
-variable "db_password" {
-  description = "Database password"
+variable "dynamodb_access_role_arn" {
+  description = "DynamoDB access role ARN"
   type        = string
-  sensitive   = true
+}
+
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
 }
 
 # Application Configuration

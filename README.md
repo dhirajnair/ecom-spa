@@ -27,7 +27,7 @@ A modern, scalable e-commerce single-page application built with microservices a
                     └───────────┬───────────┘
                                 ▼
                     ┌─────────────────────┐
-                    │   PostgreSQL        │
+                    │   DynamoDB          │
                     │   (Products + Carts)│
                     └─────────────────────┘
 ```
@@ -37,9 +37,9 @@ A modern, scalable e-commerce single-page application built with microservices a
 - **🔧 Microservices Architecture**: Loosely coupled services for scalability
 - **⚛️ Modern React Frontend**: SPA with hooks, context, and routing
 - **⚡ FastAPI Backend**: High-performance async Python APIs
-- **🗄️ PostgreSQL Database**: Reliable, ACID-compliant data storage
+- **🗄️ DynamoDB Database**: Serverless NoSQL database with auto-scaling
 - **🐳 Docker Containerization**: Consistent deployment across environments
-- **☁️ AWS Cloud Ready**: ECS Fargate, RDS, ALB infrastructure
+- **☁️ AWS Cloud Ready**: ECS Fargate, DynamoDB, ALB infrastructure
 - **🔐 JWT Authentication**: Secure token-based authentication
 - **📊 Comprehensive Monitoring**: CloudWatch logs and metrics
 - **🚀 CI/CD Ready**: GitHub Actions and automated deployment
@@ -51,7 +51,7 @@ A modern, scalable e-commerce single-page application built with microservices a
 - Docker and Docker Compose
 - Node.js 18+ (for local frontend development)
 - Python 3.11+ (for local backend development)
-- PostgreSQL (for local database)
+- AWS CLI (for DynamoDB Local or AWS deployment)
 
 ### 1. Clone Repository
 
@@ -209,37 +209,81 @@ make clean
 
 ## 🗄️ Database Schema
 
-### Products Database (`ecom_products`)
+### Products Table (DynamoDB)
 
-```sql
-CREATE TABLE products (
-    id VARCHAR PRIMARY KEY,
-    name VARCHAR NOT NULL,
-    description TEXT NOT NULL,
-    price FLOAT NOT NULL,
-    category VARCHAR NOT NULL,
-    image_url VARCHAR NOT NULL,
-    stock INTEGER NOT NULL DEFAULT 0
-);
+```json
+{
+  "TableName": "ecom-products",
+  "KeySchema": [
+    {
+      "AttributeName": "id",
+      "KeyType": "HASH"
+    }
+  ],
+  "GlobalSecondaryIndexes": [
+    {
+      "IndexName": "category-index",
+      "KeySchema": [
+        {
+          "AttributeName": "category", 
+          "KeyType": "HASH"
+        }
+      ]
+    }
+  ],
+  "AttributeDefinitions": [
+    {"AttributeName": "id", "AttributeType": "S"},
+    {"AttributeName": "category", "AttributeType": "S"}
+  ]
+}
 ```
 
-### Cart Database (`ecom_carts`)
+**Item Structure:**
+```json
+{
+  "id": "1",
+  "name": "Wireless Headphones",
+  "description": "High-quality wireless headphones",
+  "price": 199.99,
+  "category": "Electronics",
+  "image_url": "https://...",
+  "stock": 50
+}
+```
 
-```sql
-CREATE TABLE carts (
-    id VARCHAR PRIMARY KEY,
-    user_id VARCHAR NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+### Carts Table (DynamoDB)
 
-CREATE TABLE cart_items (
-    id VARCHAR PRIMARY KEY,
-    cart_id VARCHAR REFERENCES carts(id),
-    product_id VARCHAR NOT NULL,
-    quantity INTEGER NOT NULL DEFAULT 1,
-    price FLOAT NOT NULL
-);
+```json
+{
+  "TableName": "ecom-carts",
+  "KeySchema": [
+    {
+      "AttributeName": "user_id",
+      "KeyType": "HASH"
+    }
+  ],
+  "AttributeDefinitions": [
+    {"AttributeName": "user_id", "AttributeType": "S"}
+  ]
+}
+```
+
+**Item Structure:**
+```json
+{
+  "user_id": "1",
+  "id": "cart-uuid",
+  "items": [
+    {
+      "id": "item-uuid",
+      "product_id": "1",
+      "quantity": 2,
+      "price": 199.99
+    }
+  ],
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-15T11:15:00Z"
+}
 ```
 
 ## 🐳 Docker Deployment
@@ -256,10 +300,10 @@ docker-compose up --build
 
 ### Container Images
 
-- **Product Service**: Python 3.11 + FastAPI + SQLAlchemy
-- **Cart Service**: Python 3.11 + FastAPI + SQLAlchemy + JWT
+- **Product Service**: Python 3.11 + FastAPI + boto3 for DynamoDB
+- **Cart Service**: Python 3.11 + FastAPI + boto3 for DynamoDB + JWT  
 - **Frontend**: Node.js build → Nginx static server
-- **Database**: PostgreSQL 15 with custom initialization
+- **Database**: DynamoDB Local for development
 
 ## ☁️ AWS Deployment
 
@@ -268,7 +312,7 @@ docker-compose up --build
 - **VPC**: Multi-AZ setup with public/private subnets
 - **ECS Fargate**: Container orchestration
 - **Application Load Balancer**: Traffic distribution
-- **RDS PostgreSQL**: Managed database service
+- **DynamoDB**: Serverless NoSQL database
 - **ECR**: Container registry
 - **CloudWatch**: Logging and monitoring
 
@@ -383,9 +427,10 @@ make test-api
 
 ### Configuration Files
 - `docker-compose.yml`: Local development setup
-- `terraform/variables.tf`: Infrastructure configuration
+- `terraform/variables.tf`: Infrastructure configuration  
 - `frontend/package.json`: Frontend dependencies
-- `backend/*/requirements.txt`: Python dependencies
+- `backend/*/requirements.txt`: Python dependencies (now includes boto3)
+- `scripts/setup-dynamodb.py`: Database initialization script
 
 ## 🐛 Troubleshooting
 
@@ -397,9 +442,9 @@ make test-api
 - Ensure ports are available
 
 **Database connection errors:**
-- Verify PostgreSQL is running
-- Check connection credentials
-- Review security group rules (AWS)
+- Verify DynamoDB Local is running
+- Check AWS credentials and region
+- Review IAM roles and policies (AWS)
 
 **Frontend not loading:**
 - Check console for JavaScript errors

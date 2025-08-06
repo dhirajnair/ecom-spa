@@ -25,23 +25,23 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
-# Database Configuration
-variable "db_instance_class" {
-  description = "RDS instance class"
+# DynamoDB Configuration
+variable "dynamodb_billing_mode" {
+  description = "DynamoDB billing mode"
   type        = string
-  default     = "db.t3.micro"
+  default     = "PAY_PER_REQUEST"
 }
 
-variable "db_allocated_storage" {
-  description = "Allocated storage for RDS instance (GB)"
-  type        = number
-  default     = 20
+variable "enable_point_in_time_recovery" {
+  description = "Enable point-in-time recovery for DynamoDB tables"
+  type        = bool
+  default     = true
 }
 
-variable "db_username" {
-  description = "Database username"
-  type        = string
-  default     = "ecom"
+variable "dynamodb_deletion_protection" {
+  description = "Enable deletion protection for DynamoDB tables"
+  type        = bool
+  default     = false
 }
 
 # Application Configuration

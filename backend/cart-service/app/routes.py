@@ -5,11 +5,11 @@ import uuid
 import requests
 import os
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+# Remove SQLAlchemy import
 from datetime import timedelta
 from typing import List
 
-from .database import get_db, CartDB, CartItemDB
+from .database import get_db, CartDB
 from .models import Cart, CartItem, AddToCartRequest, LoginRequest, LoginResponse
 from .auth import create_access_token, verify_token, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES
 
@@ -53,32 +53,37 @@ async def login(login_request: LoginRequest):
 @router.get("/cart", response_model=Cart)
 async def get_cart(
     current_user=Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: CartDB = Depends(get_db)
 ):
     """Get user's cart"""
-    cart = db.query(CartDB).filter(CartDB.user_id == current_user.user_id).first()
+    cart = db.get_cart(current_user.user_id)
     
     if not cart:
         # Create new cart if doesn't exist
-        cart_id = str(uuid.uuid4())
-        cart = CartDB(
-            id=cart_id,
-            user_id=current_user.user_id
-        )
-        db.add(cart)
-        db.commit()
-        db.refresh(cart)
+        cart_id = db.create_cart(current_user.user_id)
+        if cart_id:
+            cart = db.get_cart(current_user.user_id)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create cart"
+            )
     
     # Calculate total
-    total = sum(item.price * item.quantity for item in cart.items)
+    total = db.calculate_cart_total(cart)
+    
+    # Convert datetime strings for response
+    from datetime import datetime
+    created_at = datetime.fromisoformat(cart['created_at'])
+    updated_at = datetime.fromisoformat(cart['updated_at']) if cart.get('updated_at') else created_at
     
     cart_response = Cart(
-        id=cart.id,
-        user_id=cart.user_id,
-        items=[CartItem.from_orm(item) for item in cart.items],
+        id=cart['id'],
+        user_id=cart['user_id'],
+        items=[CartItem(**item) for item in cart.get('items', [])],
         total=total,
-        created_at=cart.created_at,
-        updated_at=cart.updated_at
+        created_at=created_at,
+        updated_at=updated_at
     )
     
     return cart_response
@@ -119,48 +124,25 @@ async def validate_product(product_id: str, quantity: int):
 async def add_to_cart(
     request: AddToCartRequest,
     current_user=Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: CartDB = Depends(get_db)
 ):
     """Add product to cart"""
     # Validate product
     product = await validate_product(request.product_id, request.quantity)
     
-    # Get or create cart
-    cart = db.query(CartDB).filter(CartDB.user_id == current_user.user_id).first()
-    if not cart:
-        cart_id = str(uuid.uuid4())
-        cart = CartDB(
-            id=cart_id,
-            user_id=current_user.user_id
+    # Add item to cart
+    success = db.add_item_to_cart(
+        user_id=current_user.user_id,
+        product_id=request.product_id,
+        quantity=request.quantity,
+        price=product["price"]
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add product to cart"
         )
-        db.add(cart)
-        db.commit()
-        db.refresh(cart)
-    
-    # Check if item already exists in cart
-    existing_item = db.query(CartItemDB).filter(
-        CartItemDB.cart_id == cart.id,
-        CartItemDB.product_id == request.product_id
-    ).first()
-    
-    if existing_item:
-        # Update quantity
-        new_quantity = existing_item.quantity + request.quantity
-        await validate_product(request.product_id, new_quantity)  # Re-validate total quantity
-        existing_item.quantity = new_quantity
-    else:
-        # Add new item
-        item_id = str(uuid.uuid4())
-        cart_item = CartItemDB(
-            id=item_id,
-            cart_id=cart.id,
-            product_id=request.product_id,
-            quantity=request.quantity,
-            price=product["price"]
-        )
-        db.add(cart_item)
-    
-    db.commit()
     
     return {"message": "Product added to cart successfully"}
 
@@ -169,30 +151,16 @@ async def add_to_cart(
 async def remove_from_cart(
     product_id: str,
     current_user=Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: CartDB = Depends(get_db)
 ):
     """Remove product from cart"""
-    cart = db.query(CartDB).filter(CartDB.user_id == current_user.user_id).first()
+    success = db.remove_item_from_cart(current_user.user_id, product_id)
     
-    if not cart:
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cart not found"
+            detail="Product not found in cart or cart doesn't exist"
         )
-    
-    cart_item = db.query(CartItemDB).filter(
-        CartItemDB.cart_id == cart.id,
-        CartItemDB.product_id == product_id
-    ).first()
-    
-    if not cart_item:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found in cart"
-        )
-    
-    db.delete(cart_item)
-    db.commit()
     
     return {"message": "Product removed from cart successfully"}
 
@@ -200,14 +168,15 @@ async def remove_from_cart(
 @router.delete("/cart/clear")
 async def clear_cart(
     current_user=Depends(verify_token),
-    db: Session = Depends(get_db)
+    db: CartDB = Depends(get_db)
 ):
     """Clear all items from cart"""
-    cart = db.query(CartDB).filter(CartDB.user_id == current_user.user_id).first()
+    success = db.clear_cart(current_user.user_id)
     
-    if cart:
-        # Delete all cart items
-        db.query(CartItemDB).filter(CartItemDB.cart_id == cart.id).delete()
-        db.commit()
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Cart not found"
+        )
     
     return {"message": "Cart cleared successfully"}

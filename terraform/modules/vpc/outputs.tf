@@ -23,15 +23,7 @@ output "private_subnet_ids" {
   value       = aws_subnet.private[*].id
 }
 
-output "database_subnet_ids" {
-  description = "Database subnet IDs"
-  value       = aws_subnet.database[*].id
-}
-
-output "database_subnet_group_name" {
-  description = "Database subnet group name"
-  value       = aws_db_subnet_group.main.name
-}
+# Database subnet outputs removed - not needed for DynamoDB
 
 output "nat_gateway_ids" {
   description = "NAT Gateway IDs"
