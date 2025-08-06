@@ -17,8 +17,10 @@ help:
 	@echo "  clean     - Clean up containers and volumes"
 	@echo ""
 	@echo "Database:"
-	@echo "  db-setup  - Setup database with sample data"
-	@echo "  db-reset  - Reset database (destructive)"
+	@echo "  dynamodb      - Start DynamoDB Local only"
+	@echo "  setup-dynamodb - Setup DynamoDB tables with sample data"
+	@echo "  db-setup      - Setup database with sample data (alias)"
+	@echo "  db-reset      - Reset database (destructive)"
 	@echo ""
 	@echo "Testing:"
 	@echo "  test      - Run all tests"
@@ -59,10 +61,18 @@ clean:
 	docker-compose down -v --remove-orphans
 	docker system prune -f
 
-# Database setup
-db-setup:
-	@echo "🗃️ Setting up DynamoDB..."
+# Start DynamoDB Local only
+dynamodb:
+	@echo "🗄️ Starting DynamoDB Local..."
+	docker-compose up -d dynamodb-local
+
+# Setup DynamoDB tables
+setup-dynamodb:
+	@echo "🗃️ Setting up DynamoDB tables..."
 	python scripts/setup-dynamodb.py
+
+# Database setup (alias)
+db-setup: setup-dynamodb
 
 # Database reset
 db-reset:

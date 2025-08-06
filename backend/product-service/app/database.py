@@ -20,18 +20,18 @@ from shared.dynamodb_utils import (
     safe_query
 )
 
-# Table configuration
-PRODUCTS_TABLE_NAME = os.getenv("PRODUCTS_TABLE_NAME", "ecom-products")
+# Import configuration
+from shared.env_config import config
 
 def get_products_table():
     """Get DynamoDB products table"""
     dynamodb = get_dynamodb_resource()
-    return dynamodb.Table(PRODUCTS_TABLE_NAME)
+    return dynamodb.Table(config.PRODUCTS_TABLE_NAME)
 
 def create_products_table():
     """Create products table if it doesn't exist"""
     return create_table_if_not_exists(
-        table_name=PRODUCTS_TABLE_NAME,
+        table_name=config.PRODUCTS_TABLE_NAME,
         key_schema=[
             {
                 'AttributeName': 'id',

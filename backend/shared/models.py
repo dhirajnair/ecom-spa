@@ -9,7 +9,8 @@ from datetime import datetime
 class UserToken(BaseModel):
     user_id: str
     username: str
-    exp: datetime
+    email: Optional[str] = None
+    exp: Optional[datetime] = None
 
 
 class Product(BaseModel):

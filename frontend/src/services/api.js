@@ -1,16 +1,23 @@
 import axios from 'axios';
 
 // API base URLs
-const API_BASE_URL = process.env.REACT_APP_API_GATEWAY_URL || 'http://localhost:3001/api';
-const PRODUCT_SERVICE_URL = process.env.REACT_APP_PRODUCT_SERVICE_URL || 'http://localhost:8001/api';
-const CART_SERVICE_URL = process.env.REACT_APP_CART_SERVICE_URL || 'http://localhost:8002/api';
+// Use API Gateway URL if provided (production), otherwise use direct service URLs (development)
+const API_GATEWAY_URL = process.env.REACT_APP_API_GATEWAY_URL;
+const USE_API_GATEWAY = !!API_GATEWAY_URL;
+
+const PRODUCT_SERVICE_URL = USE_API_GATEWAY 
+  ? `${API_GATEWAY_URL}/api/products`
+  : (process.env.REACT_APP_PRODUCT_SERVICE_URL || 'http://localhost:8001/api');
+
+const CART_SERVICE_URL = USE_API_GATEWAY 
+  ? `${API_GATEWAY_URL}/api/cart`
+  : (process.env.REACT_APP_CART_SERVICE_URL || 'http://localhost:8002/api');
+
+const AUTH_SERVICE_URL = USE_API_GATEWAY 
+  ? `${API_GATEWAY_URL}/api/auth`
+  : (process.env.REACT_APP_CART_SERVICE_URL || 'http://localhost:8002/api');
 
 // Create axios instances
-const apiGateway = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-});
-
 const productService = axios.create({
   baseURL: PRODUCT_SERVICE_URL,
   timeout: 10000,
@@ -21,18 +28,46 @@ const cartService = axios.create({
   timeout: 10000,
 });
 
+const authService = axios.create({
+  baseURL: AUTH_SERVICE_URL,
+  timeout: 10000,
+});
+
+// Logging for debugging
+if (process.env.REACT_APP_DEBUG === 'true') {
+  console.log('API Configuration:', {
+    USE_API_GATEWAY,
+    API_GATEWAY_URL,
+    PRODUCT_SERVICE_URL,
+    CART_SERVICE_URL,
+    AUTH_SERVICE_URL
+  });
+}
+
 // Request interceptor to add auth token
-const addAuthToken = (config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+const addAuthToken = async (config) => {
+  try {
+    // Import dynamically to avoid circular dependencies
+    const { unifiedAuthService } = await import('./cognitoAuth');
+    const token = await unifiedAuthService.getToken();
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (error) {
+    console.warn('Failed to get auth token:', error);
+    // Fallback to localStorage for backward compatibility
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 };
 
 // Add interceptors
 cartService.interceptors.request.use(addAuthToken);
-apiGateway.interceptors.request.use(addAuthToken);
+authService.interceptors.request.use(addAuthToken);
 
 // Response interceptor for error handling
 const handleResponse = (response) => response;
@@ -47,7 +82,7 @@ const handleError = (error) => {
 };
 
 cartService.interceptors.response.use(handleResponse, handleError);
-apiGateway.interceptors.response.use(handleResponse, handleError);
+authService.interceptors.response.use(handleResponse, handleError);
 
 // API functions
 export const api = {
@@ -78,7 +113,7 @@ export const api = {
   // Auth API
   auth: {
     login: async (credentials) => {
-      const response = await cartService.post('/auth/login', credentials);
+      const response = await authService.post('/auth/login', credentials);
       return response.data;
     },
     

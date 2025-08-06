@@ -14,7 +14,9 @@
     "react-query": "^3.39.3",
     "react-hook-form": "^7.48.2",
     "react-hot-toast": "^2.4.1",
-    "lucide-react": "^0.294.0"
+    "lucide-react": "^0.294.0",
+    "aws-amplify": "^6.0.7",
+    "@aws-amplify/ui-react": "^6.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

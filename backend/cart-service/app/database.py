@@ -22,18 +22,18 @@ from shared.dynamodb_utils import (
     safe_query
 )
 
-# Table configuration
-CARTS_TABLE_NAME = os.getenv("CARTS_TABLE_NAME", "ecom-carts")
+# Import configuration
+from shared.env_config import config
 
 def get_carts_table():
     """Get DynamoDB carts table"""
     dynamodb = get_dynamodb_resource()
-    return dynamodb.Table(CARTS_TABLE_NAME)
+    return dynamodb.Table(config.CARTS_TABLE_NAME)
 
 def create_carts_table():
     """Create carts table if it doesn't exist"""
     return create_table_if_not_exists(
-        table_name=CARTS_TABLE_NAME,
+        table_name=config.CARTS_TABLE_NAME,
         key_schema=[
             {
                 'AttributeName': 'user_id',

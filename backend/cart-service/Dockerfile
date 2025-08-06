@@ -8,14 +8,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY requirements.txt .
+COPY cart-service/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy shared utilities
-COPY ../shared/ ./shared/
+COPY shared/ ./shared/
 
 # Copy application code
-COPY app/ ./app/
+COPY cart-service/app/ ./app/
 
 # Expose port
 EXPOSE 8002

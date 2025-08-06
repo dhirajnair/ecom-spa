@@ -69,6 +69,21 @@ module "dynamodb" {
   deletion_protection        = var.dynamodb_deletion_protection
 }
 
+# Cognito User Pool and Identity Pool
+module "cognito" {
+  source = "./modules/cognito"
+  
+  project_name    = var.project_name
+  environment     = var.environment
+  domain_prefix   = var.cognito_domain_prefix
+  frontend_domain = var.frontend_domain
+  api_domain      = var.api_domain
+  
+  password_policy = var.cognito_password_policy
+  mfa_configuration = var.cognito_mfa_configuration
+  enable_user_pool_domain = var.enable_cognito_domain
+}
+
 # ECS Cluster
 module "ecs" {
   source = "./modules/ecs"
@@ -94,6 +109,44 @@ module "ecr" {
   
   project_name = var.project_name
   environment  = var.environment
+}
+
+# API Gateway
+module "api_gateway" {
+  source = "./modules/api-gateway"
+  
+  project_name    = var.project_name
+  environment     = var.environment
+  stage_name      = var.api_gateway_stage_name
+  
+  # Cognito Configuration
+  cognito_user_pool_id  = module.cognito.user_pool_id
+  cognito_user_pool_arn = module.cognito.user_pool_arn
+  
+  # ALB Configuration
+  alb_arn      = module.alb.alb_arn
+  alb_dns_name = module.alb.alb_dns_name
+  alb_zone_id  = module.alb.alb_zone_id
+  
+  # VPC Configuration
+  vpc_id             = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.private_subnet_ids
+  
+  # Service Configuration
+  product_service_url = "/api/products"
+  cart_service_url    = "/api/cart"
+  
+  # Optional: Custom domain
+  domain_name     = var.api_gateway_domain_name
+  certificate_arn = var.api_gateway_certificate_arn
+  
+  # CORS Configuration
+  cors_allow_origins = var.api_gateway_cors_origins
+  
+  depends_on = [
+    module.alb,
+    module.cognito
+  ]
 }
 
 # ECS Services
@@ -125,8 +178,15 @@ module "services" {
   jwt_secret_key = var.jwt_secret_key
   aws_region     = var.aws_region
   
+  # Cognito Configuration
+  cognito_user_pool_id    = module.cognito.user_pool_id
+  cognito_web_client_id   = module.cognito.web_client_id
+  cognito_api_client_id   = module.cognito.api_client_id
+  cognito_identity_pool_id = module.cognito.identity_pool_id
+  
   depends_on = [
     module.dynamodb,
-    module.alb
+    module.alb,
+    module.cognito
   ]
 }

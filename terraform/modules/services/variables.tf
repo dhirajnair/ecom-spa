@@ -87,3 +87,24 @@ variable "jwt_secret_key" {
   type        = string
   sensitive   = true
 }
+
+# Cognito Configuration
+variable "cognito_user_pool_id" {
+  description = "Cognito User Pool ID"
+  type        = string
+}
+
+variable "cognito_web_client_id" {
+  description = "Cognito Web Client ID"
+  type        = string
+}
+
+variable "cognito_api_client_id" {
+  description = "Cognito API Client ID"
+  type        = string
+}
+
+variable "cognito_identity_pool_id" {
+  description = "Cognito Identity Pool ID"
+  type        = string
+}

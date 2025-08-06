@@ -4,32 +4,56 @@
 [![Architecture](https://img.shields.io/badge/architecture-microservices-blue.svg)](https://microservices.io/)
 [![Frontend](https://img.shields.io/badge/frontend-React-61DAFB.svg)](https://reactjs.org/)
 [![Backend](https://img.shields.io/badge/backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
-[![Database](https://img.shields.io/badge/database-PostgreSQL-316192.svg)](https://postgresql.org/)
+[![Database](https://img.shields.io/badge/database-DynamoDB-FF9900.svg)](https://aws.amazon.com/dynamodb/)
 [![Cloud](https://img.shields.io/badge/cloud-AWS-FF9900.svg)](https://aws.amazon.com/)
 
-A modern, scalable e-commerce single-page application built with microservices architecture, featuring React frontend, FastAPI backend services, PostgreSQL database, and AWS cloud deployment.
+A modern, scalable e-commerce single-page application built with microservices architecture, featuring React frontend, FastAPI backend services, DynamoDB database, AWS Cognito authentication, and AWS cloud deployment.
 
 ## 🏗️ Architecture Overview
 
+### Production Environment (AWS)
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React SPA     │    │   API Gateway    │    │  Load Balancer  │
-│   (Frontend)    │◄──►│    (Nginx)       │◄──►│      (ALB)      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                    ┌───────────┼───────────┐
-                    ▼                       ▼
-            ┌─────────────────┐    ┌─────────────────┐
-            │ Product Service │    │  Cart Service   │
-            │    (FastAPI)    │    │   (FastAPI)     │
-            └─────────────────┘    └─────────────────┘
-                    │                       │
-                    └───────────┬───────────┘
-                                ▼
-                    ┌─────────────────────┐
-                    │   DynamoDB          │
-                    │   (Products + Carts)│
-                    └─────────────────────┘
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React SPA     │    │  API Gateway    │    │  Load Balancer  │
+│   (CloudFront)  │◄──►│   (REST API)    │◄──►│      (ALB)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                               │                       │
+                               │ VPC Link              │
+                               ▼                       │
+                    ┌─────────────────────┐            │
+                    │  Cognito Authorizer │            │
+                    │   (Cart Endpoints)  │            │
+                    └─────────────────────┘            │
+                               │                       │
+                   ┌───────────┼───────────┐          │
+                   ▼                       ▼          │
+           ┌─────────────────┐    ┌─────────────────┐  │
+           │ Product Service │    │  Cart Service   │  │
+           │  (ECS Fargate)  │    │  (ECS Fargate)  │◄─┘
+           └─────────────────┘    └─────────────────┘
+                   │                       │
+                   └───────────┬───────────┘
+                               ▼
+                   ┌─────────────────────┐
+                   │   DynamoDB          │
+                   │   (Products + Carts)│
+                   └─────────────────────┘
+```
+
+### Local Development Environment (Simplified)
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React SPA     │    │ Product Service │    │  Cart Service   │
+│   (Frontend)    │◄──►│    (FastAPI)    │◄──►│   (FastAPI)     │
+│ localhost:3000  │    │ localhost:8001  │    │ localhost:8002  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                       │
+                                └───────────┬───────────┘
+                                            ▼
+                                ┌─────────────────────┐
+                                │  DynamoDB Local     │
+                                │   localhost:8000    │
+                                └─────────────────────┘
 ```
 
 ### 🎯 Key Features
@@ -38,9 +62,10 @@ A modern, scalable e-commerce single-page application built with microservices a
 - **⚛️ Modern React Frontend**: SPA with hooks, context, and routing
 - **⚡ FastAPI Backend**: High-performance async Python APIs
 - **🗄️ DynamoDB Database**: Serverless NoSQL database with auto-scaling
+- **🌐 AWS API Gateway**: Managed API routing with Cognito authorization
 - **🐳 Docker Containerization**: Consistent deployment across environments
-- **☁️ AWS Cloud Ready**: ECS Fargate, DynamoDB, ALB infrastructure
-- **🔐 JWT Authentication**: Secure token-based authentication
+- **☁️ AWS Cloud Ready**: ECS Fargate, DynamoDB, ALB, API Gateway infrastructure
+- **🔐 AWS Cognito Authentication**: Secure, scalable authentication with local development mode
 - **📊 Comprehensive Monitoring**: CloudWatch logs and metrics
 - **🚀 CI/CD Ready**: GitHub Actions and automated deployment
 
@@ -73,9 +98,9 @@ docker-compose up --build
 ### 3. Access Application
 
 - **Frontend**: http://localhost:3000
-- **API Gateway**: http://localhost:3001
-- **Product Service**: http://localhost:8001/docs
-- **Cart Service**: http://localhost:8002/docs
+- **Product Service API**: http://localhost:8001/docs
+- **Cart Service API**: http://localhost:8002/docs
+- **DynamoDB Local**: http://localhost:8000
 
 ### 4. Login Credentials
 
@@ -107,7 +132,6 @@ ecom-spa/
 │   ├── 📁 modules/           # Terraform modules
 │   ├── 📄 main.tf           # Root configuration
 │   └── 📄 variables.tf
-├── 📁 nginx/                 # API Gateway configuration
 ├── 📁 scripts/               # Database and deployment scripts
 ├── 🐳 docker-compose.yml     # Local development setup
 ├── 📄 Makefile               # Development commands
@@ -118,19 +142,43 @@ ecom-spa/
 
 ### Local Development Setup
 
-#### Backend Services
+For local development, we use a simplified architecture with direct service communication for easier debugging and faster iteration.
+
+#### Option 1: Docker Development Environment (Recommended)
 
 ```bash
-# Setup database
-make db-setup
+# Start simplified development environment (direct service communication)
+make dev
 
-# Start product service
-cd backend/product-service
-python -m uvicorn app.main:app --reload --port 8001
+# Or manually
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
 
-# Start cart service
-cd backend/cart-service
-python -m uvicorn app.main:app --reload --port 8002
+This starts:
+- DynamoDB Local (localhost:8000)
+- Product Service (localhost:8001)
+- Cart Service (localhost:8002)
+- Frontend (localhost:3000)
+
+#### Option 2: Local Backend Services (Manual)
+
+```bash
+# Install dependencies
+pip install pydantic-settings==2.1.0
+
+# Start DynamoDB Local
+make dynamodb
+
+# Setup DynamoDB tables
+make setup-dynamodb
+
+# Start product service (from backend directory)
+cd backend
+PYTHONPATH=$(pwd) uvicorn product-service.app.main:app --reload --port 8001
+
+# Start cart service (from backend directory, new terminal)
+cd backend
+PYTHONPATH=$(pwd) uvicorn cart-service.app.main:app --reload --port 8002
 ```
 
 #### Frontend Development
@@ -144,7 +192,7 @@ npm start
 ### Development Commands
 
 ```bash
-# Start development environment
+# Start simplified development environment (direct service communication)
 make dev
 
 # Setup database
@@ -302,7 +350,7 @@ docker-compose up --build
 
 - **Product Service**: Python 3.11 + FastAPI + boto3 for DynamoDB
 - **Cart Service**: Python 3.11 + FastAPI + boto3 for DynamoDB + JWT  
-- **Frontend**: Node.js build → Nginx static server
+- **Frontend**: Node.js build → Static file server (nginx container for serving built assets)
 - **Database**: DynamoDB Local for development
 
 ## ☁️ AWS Deployment
@@ -335,13 +383,62 @@ terraform output application_url
 
 For detailed deployment instructions, see [Terraform README](terraform/README.md).
 
+## 🔑 Authentication Configuration
+
+The application supports two authentication modes that can be configured via environment variables:
+
+### Local Development (Default)
+```bash
+# Frontend (.env)
+REACT_APP_USE_COGNITO_AUTH=false
+REACT_APP_API_GATEWAY_URL=  # Empty for direct service communication
+REACT_APP_PRODUCT_SERVICE_URL=http://localhost:8001/api
+REACT_APP_CART_SERVICE_URL=http://localhost:8002/api
+
+# Backend (.env)
+USE_COGNITO_AUTH=false
+```
+
+**Features:**
+- Mock users: `admin@example.com/admin123`, `user@example.com/user123`
+- Direct service-to-service communication
+- No AWS dependencies
+- Instant setup and testing
+
+### AWS Production (API Gateway + Cognito)
+```bash
+# Frontend (.env)
+REACT_APP_USE_COGNITO_AUTH=true
+REACT_APP_API_GATEWAY_URL=https://your-api-id.execute-api.us-west-2.amazonaws.com/prod
+REACT_APP_USER_POOL_ID=us-west-2_AbCdEfGhI
+REACT_APP_USER_POOL_WEB_CLIENT_ID=1a2b3c4d5e6f7g8h9i0j1k2l3m
+REACT_APP_IDENTITY_POOL_ID=us-west-2:12345678-1234-1234-1234-123456789012
+
+# Backend (.env)
+USE_COGNITO_AUTH=true
+COGNITO_USER_POOL_ID=us-west-2_AbCdEfGhI
+COGNITO_WEB_CLIENT_ID=1a2b3c4d5e6f7g8h9i0j1k2l3m
+```
+
+**Features:**
+- AWS API Gateway with built-in Cognito authorization
+- Automatic cart endpoint protection
+- Throttling, caching, and monitoring
+- Secure user registration and login
+- Password policies and MFA support
+- Scalable serverless architecture
+
+**📚 For complete setup instructions, see [Cognito Setup Guide](docs/COGNITO_SETUP.md)**
+
 ## 🔐 Security Features
 
 ### Authentication & Authorization
-- JWT token-based authentication
-- Secure password handling
-- Protected API endpoints
-- Session management
+- **AWS Cognito Integration**: Production-ready authentication service
+- **Local Development Mode**: Mock authentication for development
+- **JWT Token Verification**: Both Cognito and local JWT support
+- **Unified Auth Interface**: Seamless switching between auth modes
+- **Protected API Endpoints**: Automatic token validation
+- **Session Management**: Secure token handling and refresh
 
 ### Network Security
 - Private subnets for backend services
@@ -409,7 +506,7 @@ make test-api
 - **React Query caching** for API responses
 - **Database indexing** for fast queries
 - **Container image optimization**
-- **Nginx gzip compression**
+- **CloudFront compression and caching**
 
 ## 🔧 Configuration
 

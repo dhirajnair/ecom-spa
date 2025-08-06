@@ -120,3 +120,81 @@ variable "certificate_arn" {
   type        = string
   default     = ""
 }
+
+# Cognito Configuration
+variable "cognito_domain_prefix" {
+  description = "Domain prefix for Cognito hosted UI (must be unique across AWS)"
+  type        = string
+  default     = null
+}
+
+variable "frontend_domain" {
+  description = "Frontend domain for Cognito callback URLs"
+  type        = string
+  default     = "http://localhost:3000"
+}
+
+variable "api_domain" {
+  description = "API domain for CORS configuration"
+  type        = string
+  default     = "http://localhost:3001"
+}
+
+variable "cognito_password_policy" {
+  description = "Password policy configuration for Cognito User Pool"
+  type = object({
+    minimum_length    = number
+    require_lowercase = bool
+    require_numbers   = bool
+    require_symbols   = bool
+    require_uppercase = bool
+  })
+  default = {
+    minimum_length    = 8
+    require_lowercase = true
+    require_numbers   = true
+    require_symbols   = false
+    require_uppercase = true
+  }
+}
+
+variable "cognito_mfa_configuration" {
+  description = "MFA configuration for Cognito User Pool"
+  type        = string
+  default     = "OPTIONAL"
+  validation {
+    condition     = contains(["OFF", "ON", "OPTIONAL"], var.cognito_mfa_configuration)
+    error_message = "MFA configuration must be OFF, ON, or OPTIONAL."
+  }
+}
+
+variable "enable_cognito_domain" {
+  description = "Enable Cognito hosted UI domain"
+  type        = bool
+  default     = true
+}
+
+# API Gateway Configuration
+variable "api_gateway_stage_name" {
+  description = "API Gateway stage name"
+  type        = string
+  default     = "prod"
+}
+
+variable "api_gateway_domain_name" {
+  description = "Custom domain name for API Gateway"
+  type        = string
+  default     = ""
+}
+
+variable "api_gateway_certificate_arn" {
+  description = "ACM certificate ARN for API Gateway custom domain"
+  type        = string
+  default     = ""
+}
+
+variable "api_gateway_cors_origins" {
+  description = "CORS allowed origins for API Gateway"
+  type        = list(string)
+  default     = ["*"]
+}

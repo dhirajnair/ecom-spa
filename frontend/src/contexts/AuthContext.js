@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { authService } from '../services/auth';
+import { unifiedAuthService } from '../services/cognitoAuth';
 
 // Auth state
 const initialState = {
@@ -75,22 +75,25 @@ export const AuthProvider = ({ children }) => {
 
   // Check authentication status on mount
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
-        if (authService.isAuthenticated() && !authService.isTokenExpired()) {
-          const user = authService.getCurrentUser();
+        const isAuth = await unifiedAuthService.isAuthenticated();
+        const isExpired = await unifiedAuthService.isTokenExpired();
+        
+        if (isAuth && !isExpired) {
+          const user = await unifiedAuthService.getCurrentUser();
           dispatch({
             type: authActions.LOGIN_SUCCESS,
             payload: { user }
           });
         } else {
           // Token expired or doesn't exist
-          authService.logout();
+          await unifiedAuthService.logout();
           dispatch({ type: authActions.LOGOUT });
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        authService.logout();
+        await unifiedAuthService.logout();
         dispatch({ type: authActions.LOGOUT });
       } finally {
         dispatch({ type: authActions.SET_LOADING, payload: false });
@@ -105,7 +108,7 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     
     try {
-      const response = await authService.login(username, password);
+      const response = await unifiedAuthService.login(username, password);
       const user = {
         id: response.user_id,
         username: response.username
@@ -118,7 +121,7 @@ export const AuthProvider = ({ children }) => {
       
       return response;
     } catch (error) {
-      const errorMessage = error.response?.data?.detail || 'Login failed';
+      const errorMessage = error.response?.data?.detail || error.message || 'Login failed';
       dispatch({
         type: authActions.LOGIN_ERROR,
         payload: errorMessage
@@ -128,8 +131,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await unifiedAuthService.logout();
     dispatch({ type: authActions.LOGOUT });
   };
 

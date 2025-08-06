@@ -11,7 +11,7 @@ from typing import List
 
 from .database import get_db, CartDB
 from .models import Cart, CartItem, AddToCartRequest, LoginRequest, LoginResponse
-from .auth import create_access_token, verify_token, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES
+from .auth import create_access_token, verify_token, verify_user_token, authenticate_user, ACCESS_TOKEN_EXPIRE_MINUTES, MockCognitoAuth
 
 router = APIRouter()
 
@@ -27,32 +27,55 @@ async def health_check():
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(login_request: LoginRequest):
-    """User login endpoint"""
-    user = authenticate_user(login_request.username, login_request.password)
+    """User login endpoint - supports both local and Cognito mock authentication"""
+    from shared.env_config import settings
     
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+    # For local development without Cognito, use mock authentication
+    if not settings.USE_COGNITO_AUTH:
+        # Try email-based authentication first (for mock Cognito users)
+        user = MockCognitoAuth.authenticate_user(login_request.username, login_request.password)
+        
+        if not user:
+            # Fall back to username-based authentication (original users)
+            user = authenticate_user(login_request.username, login_request.password)
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        # Create token with consistent format
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        
+        if "email" in user:
+            # Mock Cognito format
+            access_token = MockCognitoAuth.create_mock_token(user)
+        else:
+            # Original local format
+            access_token = create_access_token(
+                data={"sub": user["id"], "username": user["username"]},
+                expires_delta=access_token_expires
+            )
+        
+        return LoginResponse(
+            access_token=access_token,
+            user_id=user["user_id"] if "user_id" in user else user["id"],
+            username=user["username"]
         )
-    
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["id"], "username": user["username"]},
-        expires_delta=access_token_expires
-    )
-    
-    return LoginResponse(
-        access_token=access_token,
-        user_id=user["id"],
-        username=user["username"]
-    )
+    else:
+        # TODO: For production with Cognito, implement proper Cognito authentication flow
+        # This would typically redirect to Cognito hosted UI or use Cognito SDK
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="Cognito authentication flow not implemented in this endpoint. Use Cognito hosted UI or SDK."
+        )
 
 
 @router.get("/cart", response_model=Cart)
 async def get_cart(
-    current_user=Depends(verify_token),
+    current_user=Depends(verify_user_token),
     db: CartDB = Depends(get_db)
 ):
     """Get user's cart"""
@@ -123,7 +146,7 @@ async def validate_product(product_id: str, quantity: int):
 @router.post("/cart/add")
 async def add_to_cart(
     request: AddToCartRequest,
-    current_user=Depends(verify_token),
+    current_user=Depends(verify_user_token),
     db: CartDB = Depends(get_db)
 ):
     """Add product to cart"""
@@ -150,7 +173,7 @@ async def add_to_cart(
 @router.delete("/cart/remove/{product_id}")
 async def remove_from_cart(
     product_id: str,
-    current_user=Depends(verify_token),
+    current_user=Depends(verify_user_token),
     db: CartDB = Depends(get_db)
 ):
     """Remove product from cart"""
@@ -167,7 +190,7 @@ async def remove_from_cart(
 
 @router.delete("/cart/clear")
 async def clear_cart(
-    current_user=Depends(verify_token),
+    current_user=Depends(verify_user_token),
     db: CartDB = Depends(get_db)
 ):
     """Clear all items from cart"""

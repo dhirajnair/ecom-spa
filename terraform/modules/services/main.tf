@@ -108,6 +108,22 @@ resource "aws_ecs_task_definition" "product_service" {
         {
           name  = "JWT_SECRET_KEY"
           value = var.jwt_secret_key
+        },
+        {
+          name  = "COGNITO_USER_POOL_ID"
+          value = var.cognito_user_pool_id
+        },
+        {
+          name  = "COGNITO_USER_POOL_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "COGNITO_WEB_CLIENT_ID"
+          value = var.cognito_web_client_id
+        },
+        {
+          name  = "COGNITO_API_CLIENT_ID"
+          value = var.cognito_api_client_id
         }
       ]
 
@@ -177,6 +193,22 @@ resource "aws_ecs_task_definition" "cart_service" {
         {
           name  = "PRODUCT_SERVICE_URL"
           value = "http://localhost:8001/api"  # This will be updated with service discovery
+        },
+        {
+          name  = "COGNITO_USER_POOL_ID"
+          value = var.cognito_user_pool_id
+        },
+        {
+          name  = "COGNITO_USER_POOL_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "COGNITO_WEB_CLIENT_ID"
+          value = var.cognito_web_client_id
+        },
+        {
+          name  = "COGNITO_API_CLIENT_ID"
+          value = var.cognito_api_client_id
         }
       ]
 

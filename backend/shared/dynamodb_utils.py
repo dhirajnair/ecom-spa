@@ -1,49 +1,43 @@
 """
 Shared DynamoDB utilities for microservices
 """
-import os
 import boto3
 from typing import Optional, Dict, Any
 from botocore.exceptions import ClientError
 import logging
+from .env_config import config
 
 logger = logging.getLogger(__name__)
 
-# DynamoDB configuration
-AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
-DYNAMODB_ENDPOINT = os.getenv("DYNAMODB_ENDPOINT", None)  # For local development
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "dummy")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "dummy")
-
 def get_dynamodb_client():
     """Get DynamoDB client for local or AWS"""
-    if DYNAMODB_ENDPOINT:
+    if config.DYNAMODB_ENDPOINT:
         # Local DynamoDB
         return boto3.client(
             'dynamodb',
-            endpoint_url=DYNAMODB_ENDPOINT,
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+            endpoint_url=config.DYNAMODB_ENDPOINT,
+            region_name=config.AWS_REGION,
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
         )
     else:
         # AWS DynamoDB
-        return boto3.client('dynamodb', region_name=AWS_REGION)
+        return boto3.client('dynamodb', region_name=config.AWS_REGION)
 
 def get_dynamodb_resource():
     """Get DynamoDB resource for local or AWS"""
-    if DYNAMODB_ENDPOINT:
+    if config.DYNAMODB_ENDPOINT:
         # Local DynamoDB
         return boto3.resource(
             'dynamodb',
-            endpoint_url=DYNAMODB_ENDPOINT,
-            region_name=AWS_REGION,
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+            endpoint_url=config.DYNAMODB_ENDPOINT,
+            region_name=config.AWS_REGION,
+            aws_access_key_id=config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=config.AWS_SECRET_ACCESS_KEY
         )
     else:
         # AWS DynamoDB
-        return boto3.resource('dynamodb', region_name=AWS_REGION)
+        return boto3.resource('dynamodb', region_name=config.AWS_REGION)
 
 def create_table_if_not_exists(table_name: str, key_schema: list, attribute_definitions: list, 
                               billing_mode: str = 'PAY_PER_REQUEST', 
