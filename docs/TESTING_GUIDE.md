@@ -234,20 +234,28 @@ curl -X GET http://localhost:8001/api/categories
 
 ### Step 5: Test Cart Service
 
-Open a new terminal window for the Cart Service:
+The cart service has built-in authentication that works in two modes:
 
+**🏠 Local Development Mode** (Default - No AWS dependencies):
+- Mock users for testing
+- Direct service communication
+- No Cognito setup required
+
+**☁️ Production Mode** (AWS Cognito):
+- Real AWS Cognito authentication
+- API Gateway integration
+- Requires Cognito setup
+
+For local testing, ensure your backend/.env has:
 ```bash
-# Navigate to cart service
-cd backend/cart-service
+USE_COGNITO_AUTH=false
+```
 
-# Install dependencies
-pip install -r requirements.txt
-
-# The Pydantic settings will automatically load from .env files
-# Make sure PORT=8002 is set in backend/.env for cart service
-
-# Start the service
-PYTHONPATH=/Users/dhirajnair/Documents/Projects/code/xx/ecom-spa/backend uvicorn cart-service.app.main:app --reload --port 8002
+Start the cart service:
+```bash
+# From backend directory (in a new terminal)
+cd backend
+PYTHONPATH=$(pwd) uvicorn cart-service.app.main:app --reload --port 8002
 ```
 
 ### Step 6: Test Cart Service Endpoints
@@ -257,13 +265,46 @@ PYTHONPATH=/Users/dhirajnair/Documents/Projects/code/xx/ecom-spa/backend uvicorn
 curl -X GET http://localhost:8002/api/health
 ```
 
-#### 6.2 Login (Get JWT Token)
+**Expected response:**
+```json
+{
+  "status": "healthy",
+  "service": "cart-service",
+  "auth_mode": "local"
+}
+```
+
+#### 6.2 Login (Local Development Mode)
+
+For local testing, use these pre-configured mock users:
+
+**Admin User:**
 ```bash
 curl -X POST http://localhost:8002/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "username": "demo",
-    "password": "demo123"
+    "username": "admin@example.com",
+    "password": "admin123"
+  }'
+```
+
+**Regular User:**
+```bash
+curl -X POST http://localhost:8002/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com", 
+    "password": "user123"
+  }'
+```
+
+**Alternative (Legacy Users):**
+```bash
+curl -X POST http://localhost:8002/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "password": "admin123"
   }'
 ```
 
@@ -272,12 +313,15 @@ curl -X POST http://localhost:8002/api/auth/login \
 {
   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
   "token_type": "bearer",
-  "user_id": "1",
-  "username": "demo"
+  "user": {
+    "id": "user1",
+    "email": "user@example.com",
+    "name": "Test User"
+  }
 }
 ```
 
-**Save the token for next requests:**
+**Save the token for cart operations:**
 ```bash
 export JWT_TOKEN="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 ```
@@ -355,16 +399,16 @@ curl -X DELETE http://localhost:8002/api/cart/clear \
   -H "Authorization: Bearer $JWT_TOKEN"
 ```
 
-### Step 7: Test Using Docker Compose (Complete Stack)
+### Step 7: Test Using Docker Development Environment
 
-Stop the individual services (Ctrl+C) and test the complete stack:
+Stop the individual services (Ctrl+C) and test the simplified Docker development stack:
 
 ```bash
 # Return to project root
-cd ../..
+cd ../../
 
-# Start all services with Docker Compose
-make up
+# Start development environment (no nginx/api-gateway)
+make dev
 
 # Wait for services to be healthy (about 30-60 seconds)
 docker-compose ps
@@ -372,45 +416,52 @@ docker-compose ps
 
 **Expected output:**
 ```
-       Name                     Command               State                    Ports                  
+       Name                     Command                State                    Ports                  
 -------------------------------------------------------------------------------------------------
-ecom-api-gateway     /docker-entrypoint.sh ngin ...   Up      0.0.0.0:80->80/tcp,:::80->80/tcp
-ecom-cart-service    python -m uvicorn app.main ...   Up      0.0.0.0:8002->8002/tcp
-ecom-dynamodb        java -jar DynamoDBLocal.ja ...   Up      0.0.0.0:8000->8000/tcp
-ecom-frontend        /docker-entrypoint.sh ngin ...   Up      0.0.0.0:3000->80/tcp
-ecom-product-service python -m uvicorn app.main ...   Up      0.0.0.0:8001->8001/tcp
+ecom-cart-service-dev    python -m uvicorn app.main ...   Up      0.0.0.0:8002->8002/tcp
+ecom-dynamodb           java -jar DynamoDBLocal.ja ...   Up      0.0.0.0:8000->8000/tcp
+ecom-frontend-dev       npm start                  ...   Up      0.0.0.0:3000->3000/tcp
+ecom-product-service-dev python -m uvicorn app.main ...   Up      0.0.0.0:8001->8001/tcp
 ```
 
-### Step 8: Test Complete Stack Through API Gateway
+### Step 8: Test Complete Stack (Direct Service Communication)
 
-Test the services through the Nginx API Gateway:
+Test the services through direct communication (simplified for local development):
 
-#### 8.1 Test Products via Gateway
+#### 8.1 Test Products Service
 ```bash
-curl -X GET http://localhost/api/products
-curl -X GET http://localhost/api/products/1
-curl -X GET http://localhost/api/categories
+curl -X GET http://localhost:8001/api/products
+curl -X GET http://localhost:8001/api/products/1
+curl -X GET http://localhost:8001/api/categories
 ```
 
-#### 8.2 Test Cart Service via Gateway
+#### 8.2 Test Cart Service with Authentication
 ```bash
-# Login
-curl -X POST http://localhost/api/auth/login \
+# Login with local mock user
+curl -X POST http://localhost:8002/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "demo", "password": "demo123"}'
+  -d '{"email": "user@example.com", "password": "user123"}'
 
 # Use the returned token
 export JWT_TOKEN="your-token-here"
 
 # Test cart operations
-curl -X GET http://localhost/api/cart \
+curl -X GET http://localhost:8002/api/cart \
   -H "Authorization: Bearer $JWT_TOKEN"
 
-curl -X POST http://localhost/api/cart/add \
+curl -X POST http://localhost:8002/api/cart/add \
   -H "Authorization: Bearer $JWT_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"product_id": "1", "quantity": 1}'
 ```
+
+#### 8.3 Test Frontend (Optional)
+Open your browser and visit:
+- **Frontend**: http://localhost:3000
+- **Product Service Docs**: http://localhost:8001/docs
+- **Cart Service Docs**: http://localhost:8002/docs
+
+The frontend will use local authentication mode automatically when `REACT_APP_USE_COGNITO_AUTH=false`.
 
 ### Step 9: Verify DynamoDB Data
 
@@ -459,6 +510,58 @@ for item in response['Items']:
     print(f"Cart for user {item['user_id']}: {len(item.get('items', []))} items")
 ```
 
+## 🔑 Authentication Modes
+
+The application supports two authentication modes that can be easily switched:
+
+### 🏠 Local Development Mode (Default)
+
+**Environment Variables:**
+```bash
+# Backend (.env)
+USE_COGNITO_AUTH=false
+
+# Frontend (.env) 
+REACT_APP_USE_COGNITO_AUTH=false
+REACT_APP_PRODUCT_SERVICE_URL=http://localhost:8001/api
+REACT_APP_CART_SERVICE_URL=http://localhost:8002/api
+```
+
+**Features:**
+- ✅ **Mock Users**: Pre-configured test accounts
+- ✅ **No AWS Setup**: No dependencies on AWS services
+- ✅ **Fast Development**: Instant authentication for testing
+- ✅ **Direct Communication**: Services talk directly (no API Gateway)
+
+**Test Users:**
+- **Admin**: username `admin@example.com` / password `admin123`
+- **User**: username `user@example.com` / password `user123`  
+- **Legacy**: username `admin` or `user` / password `admin123` or `user123`
+
+### ☁️ Production Mode (AWS Cognito)
+
+**Environment Variables:**
+```bash
+# Backend (.env)
+USE_COGNITO_AUTH=true
+COGNITO_USER_POOL_ID=us-west-2_AbCdEfGhI
+COGNITO_WEB_CLIENT_ID=1a2b3c4d5e6f7g8h9i0j1k2l3m
+
+# Frontend (.env)
+REACT_APP_USE_COGNITO_AUTH=true
+REACT_APP_API_GATEWAY_URL=https://your-api-id.execute-api.us-west-2.amazonaws.com/prod
+REACT_APP_USER_POOL_ID=us-west-2_AbCdEfGhI
+REACT_APP_USER_POOL_WEB_CLIENT_ID=1a2b3c4d5e6f7g8h9i0j1k2l3m
+```
+
+**Features:**
+- 🔐 **Real Authentication**: AWS Cognito user management
+- 🏗️ **API Gateway**: Centralized routing and authorization
+- 📊 **Monitoring**: CloudWatch logs and metrics
+- 🔄 **Scalable**: Production-ready infrastructure
+
+**Setup**: See [Cognito Setup Guide](COGNITO_SETUP.md) for detailed instructions
+
 ## 🐛 Troubleshooting
 
 ### Common Issues and Solutions
@@ -485,11 +588,26 @@ botocore.exceptions.ClientError: An error occurred (ResourceNotFoundException) w
 {"detail": "Could not validate credentials"}
 ```
 **Solution:**
-- Ensure JWT_SECRET_KEY is set and same for both services
-- Check that the Authorization header is properly formatted
-- Verify the token hasn't expired
+- **Check Auth Mode**: Verify `USE_COGNITO_AUTH` setting in backend/.env
+- **Local Mode Issues**:
+  - Ensure JWT_SECRET_KEY is set and same for both services
+  - Use correct mock user credentials: username `admin@example.com`/password `admin123` or username `user@example.com`/password `user123`
+  - Legacy users also work: username `admin`/password `admin123` or username `user`/password `user123`
+  - Check that the Authorization header is properly formatted: `Bearer <token>`
+- **Cognito Mode Issues**:
+  - Verify Cognito configuration in environment variables
+  - Check user exists in Cognito User Pool
+  - Ensure API Gateway authorizer is correctly configured
 
-#### Issue 4: Service Communication Error
+#### Issue 4: Missing jose Module Error
+```
+ModuleNotFoundError: No module named 'jose'
+```
+**Solution:**
+- Install missing dependency: `pip install python-jose[cryptography]==3.3.0`
+- Or install all requirements: `pip install -r backend/requirements.txt`
+
+#### Issue 5: Service Communication Error
 ```
 {"detail": "Product service unavailable"}
 ```
@@ -536,23 +654,34 @@ docker-compose logs dynamodb-local
 - [ ] Tables are created with sample data
 - [ ] Product Service starts and responds to health check
 - [ ] All Product Service endpoints return expected data
-- [ ] Cart Service starts and responds to health check
-- [ ] Authentication works (login returns JWT token)
-- [ ] Cart operations work (add, remove, clear)
+- [ ] Cart Service starts and responds to health check (shows auth_mode: "local")
+- [ ] Local authentication works (login with mock users returns JWT token)
+- [ ] Cart operations work with authentication (add, remove, clear)
 - [ ] Services communicate correctly (cart validates products)
-- [ ] Docker Compose stack starts successfully
-- [ ] API Gateway routes requests correctly
+- [ ] Docker development stack starts successfully (make dev)
+- [ ] Frontend connects to services directly (no API Gateway in local mode)
 - [ ] DynamoDB data can be inspected
+- [ ] Authentication mode can be switched between local and Cognito
 
 ## 🎉 Success Indicators
 
 If all tests pass, you should see:
 
-1. **All services healthy** in `docker-compose ps`
-2. **Sample products** returned from `/api/products`
-3. **JWT authentication** working for cart operations
-4. **Cart operations** (add/remove/clear) working correctly
-5. **Data persistence** in DynamoDB tables
-6. **No error logs** in service containers
+1. **All services healthy** in `docker-compose ps` (development mode)
+2. **Sample products** returned from `localhost:8001/api/products`
+3. **Local authentication** working with mock users
+4. **Cart service** showing `"auth_mode": "local"` in health check
+5. **Cart operations** (add/remove/clear) working with JWT tokens
+6. **Direct service communication** (no API Gateway in local mode)
+7. **Data persistence** in DynamoDB tables
+8. **No error logs** in service containers
+9. **Frontend** (if running) connects directly to backend services
 
-Your DynamoDB-powered backend is now fully functional and ready for frontend integration! 🚀
+Your DynamoDB-powered backend with flexible authentication is now fully functional and ready for development! 🚀
+
+### 🔄 Next Steps
+
+- **Local Development**: Use mock authentication for fast iteration
+- **Production Deployment**: Switch to Cognito mode and deploy to AWS
+- **Frontend Integration**: Test with React frontend using direct service URLs
+- **API Documentation**: Explore interactive API docs at `/docs` endpoints

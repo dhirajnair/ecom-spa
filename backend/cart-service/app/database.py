@@ -114,11 +114,12 @@ class CartDB:
         return safe_update_item(
             self.table,
             {'user_id': user_id},
-            'SET items = :items, updated_at = :updated_at',
+            'SET #items = :items, updated_at = :updated_at',
             {
                 ':items': items,
                 ':updated_at': datetime.utcnow().isoformat()
-            }
+            },
+            expression_attribute_names={'#items': 'items'}
         )
     
     def remove_item_from_cart(self, user_id: str, product_id: str) -> bool:
@@ -133,11 +134,12 @@ class CartDB:
         return safe_update_item(
             self.table,
             {'user_id': user_id},
-            'SET items = :items, updated_at = :updated_at',
+            'SET #items = :items, updated_at = :updated_at',
             {
                 ':items': updated_items,
                 ':updated_at': datetime.utcnow().isoformat()
-            }
+            },
+            expression_attribute_names={'#items': 'items'}
         )
     
     def clear_cart(self, user_id: str) -> bool:
@@ -145,11 +147,12 @@ class CartDB:
         return safe_update_item(
             self.table,
             {'user_id': user_id},
-            'SET items = :items, updated_at = :updated_at',
+            'SET #items = :items, updated_at = :updated_at',
             {
                 ':items': [],
                 ':updated_at': datetime.utcnow().isoformat()
-            }
+            },
+            expression_attribute_names={'#items': 'items'}
         )
     
     def calculate_cart_total(self, cart: Dict[str, Any]) -> float:
