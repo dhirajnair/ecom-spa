@@ -51,6 +51,11 @@ variable "frontend_invoke_arn" {
   type        = string
 }
 
+variable "frontend_function_arn" {
+  description = "Frontend Lambda function ARN"
+  type        = string
+}
+
 # Service Configuration
 variable "product_service_url" {
   description = "Product service URL path"

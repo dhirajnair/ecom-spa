@@ -64,12 +64,32 @@ resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
   })
 }
 
+# SQS permission for DLQ (Lambda requires sqs:SendMessage on the DLQ)
+resource "aws_iam_role_policy" "lambda_sqs_policy" {
+  name = "${var.project_name}-${var.environment}-lambda-sqs-policy"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "sqs:SendMessage"
+        ],
+        Resource = aws_sqs_queue.lambda_dlq.arn
+      }
+    ]
+  })
+}
+
 # Product Service Lambda Function
 resource "aws_lambda_function" "product_service" {
   function_name = "${var.project_name}-${var.environment}-product-service"
   role         = aws_iam_role.lambda_execution_role.arn
   
   package_type = "Image"
+  # If image not yet pushed, allow a placeholder and update after push via apply
   image_uri    = var.product_service_image_uri
   
   memory_size = var.lambda_memory_size
@@ -79,7 +99,6 @@ resource "aws_lambda_function" "product_service" {
   environment {
     variables = {
       ENV                    = var.environment
-      AWS_REGION            = var.aws_region
       DYNAMODB_ENDPOINT     = ""  # Use default AWS DynamoDB
       PRODUCTS_TABLE_NAME   = var.products_table_name
       USE_COGNITO_AUTH      = "true"
@@ -109,7 +128,8 @@ resource "aws_lambda_function" "product_service" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_execution,
-    aws_iam_role_policy.lambda_dynamodb_policy
+    aws_iam_role_policy.lambda_dynamodb_policy,
+    aws_iam_role_policy.lambda_sqs_policy
   ]
 }
 
@@ -128,7 +148,6 @@ resource "aws_lambda_function" "cart_service" {
   environment {
     variables = {
       ENV                     = var.environment
-      AWS_REGION             = var.aws_region
       DYNAMODB_ENDPOINT      = ""  # Use default AWS DynamoDB
       CARTS_TABLE_NAME       = var.carts_table_name
       PRODUCTS_TABLE_NAME    = var.products_table_name
@@ -161,7 +180,8 @@ resource "aws_lambda_function" "cart_service" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_execution,
-    aws_iam_role_policy.lambda_dynamodb_policy
+    aws_iam_role_policy.lambda_dynamodb_policy,
+    aws_iam_role_policy.lambda_sqs_policy
   ]
 }
 
@@ -180,7 +200,6 @@ resource "aws_lambda_function" "frontend" {
   environment {
     variables = {
       ENV                           = var.environment
-      AWS_REGION                   = var.aws_region
       REACT_APP_USE_COGNITO_AUTH   = "true"
       REACT_APP_USER_POOL_ID       = var.cognito_user_pool_id
       REACT_APP_USER_POOL_WEB_CLIENT_ID = var.cognito_web_client_id

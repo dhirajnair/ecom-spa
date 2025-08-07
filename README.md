@@ -290,7 +290,6 @@ See setup guides for detailed configuration.
 - **API Docs**: Product Service: http://localhost:8001/docs | Cart Service: http://localhost:8002/docs
 - **Local Setup**: [LOCAL_SETUP_AND_DEPLOY.md](docs/LOCAL_SETUP_AND_DEPLOY.md)
 - **AWS Deployment**: [AWS_SETUP_AND_DEPLOY.md](docs/AWS_SETUP_AND_DEPLOY.md)  
-- **Cognito Setup**: [COGNITO_SETUP.md](docs/COGNITO_SETUP.md)
 
 ## 🛠️ Tech Stack
 

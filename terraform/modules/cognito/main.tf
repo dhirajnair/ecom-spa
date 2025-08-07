@@ -85,6 +85,14 @@ resource "aws_cognito_user_pool" "main" {
     Environment = var.environment
     Project     = var.project_name
   }
+
+  # Prevent apply failures when the pool already exists and schema would change.
+  # Cognito does not allow modifying/removing schema attributes after creation.
+  lifecycle {
+    ignore_changes = [
+      schema
+    ]
+  }
 }
 
 # Cognito User Pool Domain
@@ -170,23 +178,6 @@ resource "aws_cognito_user_pool_client" "api_client" {
 
   # Client configuration for machine-to-machine communication
   generate_secret = true
-  
-  # OAuth configuration for client credentials flow
-  allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_flows                  = ["client_credentials"]
-  allowed_oauth_scopes                 = ["aws.cognito.signin.user.admin"]
-
-  # Token validity
-  access_token_validity = 60   # 1 hour
-
-  token_validity_units {
-    access_token = "minutes"
-  }
-
-  # Explicit auth flows
-  explicit_auth_flows = [
-    "ALLOW_REFRESH_TOKEN_AUTH"
-  ]
 
   # Prevent user existence errors
   prevent_user_existence_errors = "ENABLED"

@@ -2,6 +2,7 @@
 resource "aws_ecr_repository" "product_service" {
   name                 = "${var.project_name}-${var.environment}-product-service"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -16,6 +17,7 @@ resource "aws_ecr_repository" "product_service" {
 resource "aws_ecr_repository" "cart_service" {
   name                 = "${var.project_name}-${var.environment}-cart-service"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -30,6 +32,7 @@ resource "aws_ecr_repository" "cart_service" {
 resource "aws_ecr_repository" "frontend" {
   name                 = "${var.project_name}-${var.environment}-frontend"
   image_tag_mutability = "MUTABLE"
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true

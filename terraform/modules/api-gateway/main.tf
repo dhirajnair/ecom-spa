@@ -339,10 +339,10 @@ resource "aws_api_gateway_method_response" "cart_options" {
   http_method = aws_api_gateway_method.cart_options.http_method
   status_code = "200"
 
-  response_headers = {
-    "Access-Control-Allow-Headers" = true
-    "Access-Control-Allow-Methods" = true
-    "Access-Control-Allow-Origin"  = true
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
   }
 }
 
@@ -352,10 +352,10 @@ resource "aws_api_gateway_method_response" "cart_proxy_options" {
   http_method = aws_api_gateway_method.cart_proxy_options.http_method
   status_code = "200"
 
-  response_headers = {
-    "Access-Control-Allow-Headers" = true
-    "Access-Control-Allow-Methods" = true
-    "Access-Control-Allow-Origin"  = true
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
   }
 }
 
@@ -366,10 +366,10 @@ resource "aws_api_gateway_integration_response" "cart_options" {
   http_method = aws_api_gateway_method.cart_options.http_method
   status_code = aws_api_gateway_method_response.cart_options.status_code
 
-  response_headers = {
-    "Access-Control-Allow-Headers" = "'${join(",", var.cors_allow_headers)}'"
-    "Access-Control-Allow-Methods" = "'${join(",", var.cors_allow_methods)}'"
-    "Access-Control-Allow-Origin"  = "'${join(",", var.cors_allow_origins)}'"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'${join(",", var.cors_allow_headers)}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'${join(",", var.cors_allow_methods)}'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${join(",", var.cors_allow_origins)}'"
   }
 
   depends_on = [aws_api_gateway_integration.cart_options]
@@ -381,10 +381,10 @@ resource "aws_api_gateway_integration_response" "cart_proxy_options" {
   http_method = aws_api_gateway_method.cart_proxy_options.http_method
   status_code = aws_api_gateway_method_response.cart_proxy_options.status_code
 
-  response_headers = {
-    "Access-Control-Allow-Headers" = "'${join(",", var.cors_allow_headers)}'"
-    "Access-Control-Allow-Methods" = "'${join(",", var.cors_allow_methods)}'"
-    "Access-Control-Allow-Origin"  = "'${join(",", var.cors_allow_origins)}'"
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'${join(",", var.cors_allow_headers)}'"
+    "method.response.header.Access-Control-Allow-Methods" = "'${join(",", var.cors_allow_methods)}'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'${join(",", var.cors_allow_origins)}'"
   }
 
   depends_on = [aws_api_gateway_integration.cart_proxy_options]
@@ -434,11 +434,7 @@ resource "aws_api_gateway_stage" "main" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   stage_name    = var.stage_name
 
-  # Enable throttling
-  throttle_settings {
-    rate_limit  = var.throttle_rate_limit
-    burst_limit = var.throttle_burst_limit
-  }
+  # Throttling will be configured via method settings if needed
 
   # Enable access logging
   access_log_settings {
@@ -464,6 +460,11 @@ resource "aws_api_gateway_stage" "main" {
     Environment = var.environment
     Project     = var.project_name
   }
+
+  depends_on = [
+    aws_api_gateway_account.account,
+    aws_iam_role_policy.apigw_cloudwatch_policy
+  ]
 }
 
 # CloudWatch Log Group for API Gateway
@@ -476,6 +477,54 @@ resource "aws_cloudwatch_log_group" "api_gateway" {
     Environment = var.environment
     Project     = var.project_name
   }
+}
+
+# IAM role for API Gateway to write CloudWatch Logs
+resource "aws_iam_role" "apigw_cloudwatch_role" {
+  name = "${var.project_name}-${var.environment}-apigw-cw-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "apigateway.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "apigw_cloudwatch_policy" {
+  name = "${var.project_name}-${var.environment}-apigw-cw-policy"
+  role = aws_iam_role.apigw_cloudwatch_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:DescribeLogGroups",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents",
+          "logs:GetLogEvents",
+          "logs:FilterLogEvents",
+          "logs:PutRetentionPolicy"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Link API Gateway account to CloudWatch role to enable access logging
+resource "aws_api_gateway_account" "account" {
+  cloudwatch_role_arn = aws_iam_role.apigw_cloudwatch_role.arn
 }
 
 # Custom Domain (optional)

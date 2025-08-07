@@ -23,20 +23,7 @@ output "api_stage_name" {
   value       = aws_api_gateway_stage.main.stage_name
 }
 
-output "vpc_link_id" {
-  description = "VPC Link ID"
-  value       = aws_api_gateway_vpc_link.main.id
-}
-
-output "alb_arn" {
-  description = "ALB ARN used by API Gateway"
-  value       = var.alb_arn
-}
-
-output "alb_dns_name" {
-  description = "ALB DNS name used by API Gateway"
-  value       = var.alb_dns_name
-}
+# VPC Link and ALB not used in serverless Lambda architecture
 
 output "cognito_authorizer_id" {
   description = "Cognito User Pool authorizer ID"
