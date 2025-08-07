@@ -22,6 +22,17 @@ from shared.dynamodb_utils import (
     safe_query
 )
 
+def convert_floats_to_decimals(obj):
+    """Recursively convert float values to Decimal for DynamoDB compatibility"""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {key: convert_floats_to_decimals(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_floats_to_decimals(item) for item in obj]
+    else:
+        return obj
+
 # Import configuration
 from shared.env_config import config
 
@@ -110,13 +121,13 @@ class CartDB:
             }
             items.append(new_item)
         
-        # Update cart
+        # Update cart - convert all floats to Decimals for DynamoDB
         return safe_update_item(
             self.table,
             {'user_id': user_id},
             'SET #items = :items, updated_at = :updated_at',
             {
-                ':items': items,
+                ':items': convert_floats_to_decimals(items),
                 ':updated_at': datetime.utcnow().isoformat()
             },
             expression_attribute_names={'#items': 'items'}
@@ -136,7 +147,7 @@ class CartDB:
             {'user_id': user_id},
             'SET #items = :items, updated_at = :updated_at',
             {
-                ':items': updated_items,
+                ':items': convert_floats_to_decimals(updated_items),
                 ':updated_at': datetime.utcnow().isoformat()
             },
             expression_attribute_names={'#items': 'items'}

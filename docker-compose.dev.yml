@@ -27,7 +27,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=dummy
       - PRODUCTS_TABLE_NAME=ecom-products
       - PORT=8001
-      - JWT_SECRET_KEY=dev-secret-key
+      - JWT_SECRET_KEY=dev-secret-key-that-is-at-least-32-characters-long-for-development
       - USE_COGNITO_AUTH=false
       - PYTHONPATH=/app
     depends_on:
@@ -54,7 +54,7 @@ services:
       - AWS_SECRET_ACCESS_KEY=dummy
       - CARTS_TABLE_NAME=ecom-carts
       - PORT=8002
-      - JWT_SECRET_KEY=dev-secret-key
+      - JWT_SECRET_KEY=dev-secret-key-that-is-at-least-32-characters-long-for-development
       - USE_COGNITO_AUTH=false
       - PRODUCT_SERVICE_URL=http://product-service:8001/api
       - PYTHONPATH=/app
@@ -65,8 +65,8 @@ services:
       - ecom-network
     command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
 
-  # Frontend Development Server
-  frontend-dev:
+  # Frontend Development Server (overrides production frontend)
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
@@ -77,7 +77,7 @@ services:
       - REACT_APP_USE_COGNITO_AUTH=false
       - CHOKIDAR_USEPOLLING=true
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./frontend/src:/app/src:ro
       - ./frontend/public:/app/public:ro
