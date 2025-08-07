@@ -63,7 +63,7 @@ Modern e-commerce SPA with microservices architecture: React frontend, FastAPI b
 - **☁️ AWS Serverless**: Lambda functions, DynamoDB, API Gateway infrastructure
 - **🔐 AWS Cognito Authentication**: Secure, scalable authentication with local development mode
 - **📊 Comprehensive Monitoring**: CloudWatch logs and metrics
-- **🚀 CI/CD Ready**: GitHub Actions and automated deployment
+- **🚀 Infrastructure as Code**: Terraform for repeatable deployments
 
 ## 🚀 Setup and Deployment
 
@@ -299,6 +299,6 @@ See setup guides for detailed configuration.
 **Database**: DynamoDB (Local + AWS)  
 **Auth**: AWS Cognito + JWT  
 **Cloud**: AWS Lambda, API Gateway, ECR  
-**DevOps**: Docker, Terraform, GitHub Actions
+**DevOps**: Docker, Terraform, Makefile
 
 ---
