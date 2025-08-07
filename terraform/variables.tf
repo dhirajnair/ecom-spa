@@ -18,12 +18,13 @@ variable "aws_region" {
   default     = "us-west-2"
 }
 
-# Networking
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
-  type        = string
-  default     = "10.0.0.0/16"
-}
+# Note: VPC not needed for serverless Lambda architecture
+# Keeping variable commented for future use if needed
+# variable "vpc_cidr" {
+#   description = "CIDR block for VPC"
+#   type        = string
+#   default     = "10.0.0.0/16"
+# }
 
 # DynamoDB Configuration
 variable "dynamodb_billing_mode" {
@@ -52,60 +53,34 @@ variable "jwt_secret_key" {
   default     = "change-this-in-production-use-secrets-manager"
 }
 
-# ECS Configuration
-variable "product_service_cpu" {
-  description = "CPU units for product service"
-  type        = number
-  default     = 256
-}
-
-variable "product_service_memory" {
-  description = "Memory for product service (MB)"
+# Lambda Configuration
+variable "lambda_memory_size" {
+  description = "Memory size for Lambda functions (MB)"
   type        = number
   default     = 512
 }
 
-variable "cart_service_cpu" {
-  description = "CPU units for cart service"
+variable "lambda_timeout" {
+  description = "Timeout for Lambda functions (seconds)"
   type        = number
-  default     = 256
+  default     = 30
 }
 
-variable "cart_service_memory" {
-  description = "Memory for cart service (MB)"
-  type        = number
-  default     = 512
+variable "lambda_architecture" {
+  description = "Architecture for Lambda functions"
+  type        = string
+  default     = "x86_64"
+  validation {
+    condition     = contains(["x86_64", "arm64"], var.lambda_architecture)
+    error_message = "Architecture must be either x86_64 or arm64."
+  }
 }
 
-variable "frontend_cpu" {
-  description = "CPU units for frontend"
-  type        = number
-  default     = 256
-}
-
-variable "frontend_memory" {
-  description = "Memory for frontend (MB)"
-  type        = number
-  default     = 512
-}
-
-# Auto Scaling
-variable "min_capacity" {
-  description = "Minimum number of tasks"
-  type        = number
-  default     = 1
-}
-
-variable "max_capacity" {
-  description = "Maximum number of tasks"
-  type        = number
-  default     = 10
-}
-
-variable "desired_capacity" {
-  description = "Desired number of tasks"
-  type        = number
-  default     = 2
+# Provisioned Concurrency (optional)
+variable "enable_provisioned_concurrency" {
+  description = "Enable provisioned concurrency for Lambda functions"
+  type        = bool
+  default     = false
 }
 
 # Domain Configuration (optional)

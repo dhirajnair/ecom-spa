@@ -50,7 +50,7 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
 - **Cart Service**: http://localhost:8002 (API docs: `/docs`)
 - **DynamoDB Local**: http://localhost:8000
 
-## 🔧 Manual Local Setup
+## 🔧 Local Manual Setup
 
 ### Start Individual Components
 

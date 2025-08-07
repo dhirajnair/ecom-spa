@@ -22,17 +22,29 @@ resource "aws_api_gateway_authorizer" "cognito" {
   provider_arns = [var.cognito_user_pool_arn]
 }
 
-# VPC Link for connecting to existing ALB
-resource "aws_api_gateway_vpc_link" "main" {
-  name        = "${var.project_name}-${var.environment}-vpc-link"
-  description = "VPC Link for API Gateway to ALB"
-  target_arns = [var.alb_arn]
+# Lambda permissions for API Gateway
+resource "aws_lambda_permission" "product_service_api_gateway" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.product_service_function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
 
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-vpc-link"
-    Environment = var.environment
-    Project     = var.project_name
-  }
+resource "aws_lambda_permission" "cart_service_api_gateway" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.cart_service_function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
+}
+
+resource "aws_lambda_permission" "frontend_api_gateway" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.frontend_function_arn
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_api_gateway_rest_api.main.execution_arn}/*/*"
 }
 
 # API Gateway Resources
@@ -86,13 +98,20 @@ resource "aws_api_gateway_resource" "auth_proxy" {
   path_part   = "{proxy+}"
 }
 
+# /api/health resource (health checks)
+resource "aws_api_gateway_resource" "health" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.api.id
+  path_part   = "health"
+}
+
 # Methods for Products (Public - No Auth Required)
 
-# GET /api/products
-resource "aws_api_gateway_method" "products_get" {
+# ANY /api/products
+resource "aws_api_gateway_method" "products_any" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   resource_id   = aws_api_gateway_resource.products.id
-  http_method   = "GET"
+  http_method   = "ANY"
   authorization = "NONE"
 }
 
@@ -166,23 +185,51 @@ resource "aws_api_gateway_method" "auth_proxy_any" {
   }
 }
 
-# Integrations
+# GET /api/health (health check endpoint)
+resource "aws_api_gateway_method" "health_get" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.health.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
 
-# Products integration (to product service via ALB)
-resource "aws_api_gateway_integration" "products_get" {
+# Frontend root resource (catch-all for SPA)
+resource "aws_api_gateway_method" "root_any" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_rest_api.main.root_resource_id
+  http_method   = "ANY"
+  authorization = "NONE"
+}
+
+# Frontend proxy resource (catch-all for SPA routes)
+resource "aws_api_gateway_resource" "frontend_proxy" {
   rest_api_id = aws_api_gateway_rest_api.main.id
-  resource_id = aws_api_gateway_resource.products.id
-  http_method = aws_api_gateway_method.products_get.http_method
+  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  path_part   = "{proxy+}"
+}
 
-  type                    = "HTTP_PROXY"
-  integration_http_method = "GET"
-  uri                     = "http://${var.alb_dns_name}${var.product_service_url}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
+resource "aws_api_gateway_method" "frontend_proxy_any" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.frontend_proxy.id
+  http_method   = "ANY"
+  authorization = "NONE"
 
   request_parameters = {
-    "integration.request.header.Host" = "'${var.alb_dns_name}'"
+    "method.request.path.proxy" = true
   }
+}
+
+# Lambda Integrations
+
+# Products integration (to product service Lambda)
+resource "aws_api_gateway_integration" "products_any" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.products.id
+  http_method = aws_api_gateway_method.products_any.http_method
+
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.product_service_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "products_proxy_any" {
@@ -190,19 +237,12 @@ resource "aws_api_gateway_integration" "products_proxy_any" {
   resource_id = aws_api_gateway_resource.products_proxy.id
   http_method = aws_api_gateway_method.products_proxy_any.http_method
 
-  type                    = "HTTP_PROXY"
-  integration_http_method = "ANY"
-  uri                     = "http://${var.alb_dns_name}${var.product_service_url}/{proxy}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
-
-  request_parameters = {
-    "integration.request.path.proxy"  = "method.request.path.proxy"
-    "integration.request.header.Host" = "'${var.alb_dns_name}'"
-  }
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.product_service_invoke_arn
 }
 
-# Cart integrations (to cart service via ALB)
+# Cart integrations (to cart service Lambda)
 resource "aws_api_gateway_integration" "cart_options" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.cart.id
@@ -221,15 +261,9 @@ resource "aws_api_gateway_integration" "cart_any" {
   resource_id = aws_api_gateway_resource.cart.id
   http_method = aws_api_gateway_method.cart_any.http_method
 
-  type                    = "HTTP_PROXY"
-  integration_http_method = "ANY"
-  uri                     = "http://${var.alb_dns_name}${var.cart_service_url}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
-
-  request_parameters = {
-    "integration.request.header.Host" = "'${var.alb_dns_name}'"
-  }
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.cart_service_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "cart_proxy_any" {
@@ -237,16 +271,9 @@ resource "aws_api_gateway_integration" "cart_proxy_any" {
   resource_id = aws_api_gateway_resource.cart_proxy.id
   http_method = aws_api_gateway_method.cart_proxy_any.http_method
 
-  type                    = "HTTP_PROXY"
-  integration_http_method = "ANY"
-  uri                     = "http://${var.alb_dns_name}${var.cart_service_url}/{proxy}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
-
-  request_parameters = {
-    "integration.request.path.proxy"  = "method.request.path.proxy"
-    "integration.request.header.Host" = "'${var.alb_dns_name}'"
-  }
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.cart_service_invoke_arn
 }
 
 resource "aws_api_gateway_integration" "cart_proxy_options" {
@@ -262,22 +289,47 @@ resource "aws_api_gateway_integration" "cart_proxy_options" {
   }
 }
 
-# Auth integration (to cart service for login endpoint)
+# Auth integration (to cart service Lambda for login endpoint)
 resource "aws_api_gateway_integration" "auth_proxy_any" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.auth_proxy.id
   http_method = aws_api_gateway_method.auth_proxy_any.http_method
 
-  type                    = "HTTP_PROXY"
-  integration_http_method = "ANY"
-  uri                     = "http://${var.alb_dns_name}/api/auth/{proxy}"
-  connection_type         = "VPC_LINK"
-  connection_id           = aws_api_gateway_vpc_link.main.id
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.cart_service_invoke_arn
+}
 
-  request_parameters = {
-    "integration.request.path.proxy"  = "method.request.path.proxy"
-    "integration.request.header.Host" = "'${var.alb_dns_name}'"
-  }
+# Health check integration (to product service Lambda)
+resource "aws_api_gateway_integration" "health_get" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.health.id
+  http_method = aws_api_gateway_method.health_get.http_method
+
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.product_service_invoke_arn
+}
+
+# Frontend integrations (to frontend Lambda)
+resource "aws_api_gateway_integration" "root_any" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_rest_api.main.root_resource_id
+  http_method = aws_api_gateway_method.root_any.http_method
+
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.frontend_invoke_arn
+}
+
+resource "aws_api_gateway_integration" "frontend_proxy_any" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.frontend_proxy.id
+  http_method = aws_api_gateway_method.frontend_proxy_any.http_method
+
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.frontend_invoke_arn
 }
 
 # CORS Method Responses
@@ -351,20 +403,23 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_resource.cart_proxy.id,
       aws_api_gateway_resource.auth.id,
       aws_api_gateway_resource.auth_proxy.id,
-      aws_api_gateway_method.products_get.id,
+      aws_api_gateway_resource.health.id,
+      aws_api_gateway_method.products_any.id,
       aws_api_gateway_method.products_proxy_any.id,
       aws_api_gateway_method.cart_any.id,
       aws_api_gateway_method.cart_proxy_any.id,
       aws_api_gateway_method.cart_options.id,
       aws_api_gateway_method.cart_proxy_options.id,
       aws_api_gateway_method.auth_proxy_any.id,
-      aws_api_gateway_integration.products_get.id,
+      aws_api_gateway_method.health_get.id,
+      aws_api_gateway_integration.products_any.id,
       aws_api_gateway_integration.products_proxy_any.id,
       aws_api_gateway_integration.cart_any.id,
       aws_api_gateway_integration.cart_proxy_any.id,
       aws_api_gateway_integration.cart_options.id,
       aws_api_gateway_integration.cart_proxy_options.id,
       aws_api_gateway_integration.auth_proxy_any.id,
+      aws_api_gateway_integration.health_get.id,
     ]))
   }
 

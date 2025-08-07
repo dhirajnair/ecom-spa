@@ -108,6 +108,17 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: authActions.SET_LOADING, payload: true });
     
     try {
+      // Handle OAuth callback case
+      if (password === 'oauth-callback') {
+        const user = await unifiedAuthService.getCurrentUser();
+        dispatch({
+          type: authActions.LOGIN_SUCCESS,
+          payload: { user }
+        });
+        return { user_id: user.id, username: user.username };
+      }
+      
+      // Handle normal login
       const response = await unifiedAuthService.login(username, password);
       const user = {
         id: response.user_id,

@@ -29,7 +29,7 @@ const cognitoConfig = {
     );
   },
   
-  // Get hosted UI URL
+  // Get hosted UI URL for sign in
   getHostedUIUrl() {
     if (!this.domain) {
       return null;
@@ -40,6 +40,23 @@ const cognitoConfig = {
     const scope = 'email+openid+profile';
     
     return `https://${this.domain}.auth.${this.region}.amazoncognito.com/login?` +
+           `client_id=${this.userPoolWebClientId}&` +
+           `response_type=${responseType}&` +
+           `scope=${scope}&` +
+           `redirect_uri=${redirectUri}`;
+  },
+
+  // Get hosted UI URL for sign up
+  getSignUpUrl() {
+    if (!this.domain) {
+      return null;
+    }
+    
+    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
+    const responseType = 'code';
+    const scope = 'email+openid+profile';
+    
+    return `https://${this.domain}.auth.${this.region}.amazoncognito.com/signup?` +
            `client_id=${this.userPoolWebClientId}&` +
            `response_type=${responseType}&` +
            `scope=${scope}&` +

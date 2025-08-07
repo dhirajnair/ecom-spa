@@ -11,33 +11,29 @@ A modern, scalable e-commerce single-page application built with microservices a
 
 ## 🏗️ Architecture Overview
 
-### Production Environment (AWS)
+### Production Environment (AWS - Serverless)
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React SPA     │    │  API Gateway    │    │  Load Balancer  │
-│   (CloudFront)  │◄──►│   (REST API)    │◄──►│      (ALB)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                               │                       │
-                               │ VPC Link              │
-                               ▼                       │
-                    ┌─────────────────────┐            │
-                    │  Cognito Authorizer │            │
-                    │   (Cart Endpoints)  │            │
-                    └─────────────────────┘            │
-                               │                       │
-                   ┌───────────┼───────────┐          │
-                   ▼                       ▼          │
-           ┌─────────────────┐    ┌─────────────────┐  │
-           │ Product Service │    │  Cart Service   │  │
-           │  (ECS Fargate)  │    │  (ECS Fargate)  │◄─┘
-           └─────────────────┘    └─────────────────┘
-                   │                       │
-                   └───────────┬───────────┘
-                               ▼
-                   ┌─────────────────────┐
-                   │   DynamoDB          │
-                   │   (Products + Carts)│
-                   └─────────────────────┘
+┌─────────────────┐
+│   Frontend UI   │     ┌─────────────────────┐     ┌─────────────────────┐
+│   (React SPA)   │────►│     API Gateway     │────►│   AWS Cognito       │
+│   CloudFront    │     │     (REST API)      │     │  (Authentication)   │
+└─────────────────┘     └─────────────────────┘     └─────────────────────┘
+                                   │                            │
+                       ┌───────────┼───────────┐                │
+                       │           │           │                │
+                       ▼           ▼           ▼                │___ 
+            ┌─────────────────┐ ┌───────────┐ ┌─────────────────┐   │
+            │   Frontend      │ │ Product   │ │  Cart Service   │   │
+            │   Lambda        │ │ Service   │ │    Lambda       │◄──┘
+            │ (React SPA)     │ │  Lambda   │ │ (Protected)     │
+            └─────────────────┘ └───────────┘ └─────────────────┘
+                       │           │           │
+                       └───────────┼───────────┘
+                                   ▼
+                       ┌─────────────────────┐
+                       │   DynamoDB          │
+                       │   (Products + Carts)│
+                       └─────────────────────┘
 ```
 
 ### Local Development Environment (Simplified)
@@ -58,13 +54,13 @@ A modern, scalable e-commerce single-page application built with microservices a
 
 ### 🎯 Key Features
 
-- **🔧 Microservices Architecture**: Loosely coupled services for scalability
+- **🔧 Serverless Architecture**: Docker-based Lambda functions for maximum scalability
 - **⚛️ Modern React Frontend**: SPA with hooks, context, and routing
 - **⚡ FastAPI Backend**: High-performance async Python APIs
 - **🗄️ DynamoDB Database**: Serverless NoSQL database with auto-scaling
 - **🌐 AWS API Gateway**: Managed API routing with Cognito authorization
-- **🐳 Docker Containerization**: Consistent deployment across environments
-- **☁️ AWS Cloud Ready**: ECS Fargate, DynamoDB, ALB, API Gateway infrastructure
+- **🐳 Docker Containerization**: Container images deployed to Lambda
+- **☁️ AWS Serverless**: Lambda functions, DynamoDB, API Gateway infrastructure
 - **🔐 AWS Cognito Authentication**: Secure, scalable authentication with local development mode
 - **📊 Comprehensive Monitoring**: CloudWatch logs and metrics
 - **🚀 CI/CD Ready**: GitHub Actions and automated deployment
@@ -348,20 +344,20 @@ docker-compose up --build
 
 ### Container Images
 
-- **Product Service**: Python 3.11 + FastAPI + boto3 for DynamoDB
-- **Cart Service**: Python 3.11 + FastAPI + boto3 for DynamoDB + JWT  
-- **Frontend**: Node.js build → Static file server (nginx container for serving built assets)
+- **Product Service**: Python 3.11 + FastAPI + boto3 → Lambda container image
+- **Cart Service**: Python 3.11 + FastAPI + boto3 + JWT → Lambda container image  
+- **Frontend**: React build + Express server → Lambda container image
 - **Database**: DynamoDB Local for development
 
 ## ☁️ AWS Deployment
 
 ### Infrastructure Components
 
-- **VPC**: Multi-AZ setup with public/private subnets
-- **ECS Fargate**: Container orchestration
-- **Application Load Balancer**: Traffic distribution
+- **AWS Lambda**: Serverless compute with Docker container images
+- **API Gateway**: Managed API routing and authorization
 - **DynamoDB**: Serverless NoSQL database
-- **ECR**: Container registry
+- **AWS Cognito**: User authentication and authorization
+- **ECR**: Container registry for Lambda images
 - **CloudWatch**: Logging and monitoring
 
 ### Deployment Steps
@@ -497,30 +493,32 @@ make test-api
 ## 🚀 Performance & Scaling
 
 ### Horizontal Scaling
-- **ECS auto-scaling** based on CPU/memory
-- **Database read replicas** for read scaling
-- **CDN integration** for static assets
-- **Container resource optimization**
+- **Lambda auto-scaling** - automatic based on demand
+- **DynamoDB on-demand scaling** for read/write capacity
+- **API Gateway caching** for improved performance
+- **Container image optimization** for faster cold starts
 
 ### Performance Optimizations
 - **React Query caching** for API responses
 - **Database indexing** for fast queries
-- **Container image optimization**
-- **CloudFront compression and caching**
+- **Lambda provisioned concurrency** for reduced cold starts
+- **API Gateway caching** for frequently accessed endpoints
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
 **Backend Services:**
-- `DATABASE_URL`: PostgreSQL connection string
+- `AWS_REGION`: AWS region for DynamoDB
 - `JWT_SECRET_KEY`: JWT signing secret
-- `PORT`: Service port number
+- `COGNITO_USER_POOL_ID`: Cognito User Pool ID
+- `USE_COGNITO_AUTH`: Enable/disable Cognito authentication
 
 **Frontend:**
-- `REACT_APP_API_GATEWAY_URL`: API Gateway URL
-- `REACT_APP_PRODUCT_SERVICE_URL`: Product service URL
-- `REACT_APP_CART_SERVICE_URL`: Cart service URL
+- `REACT_APP_USE_COGNITO_AUTH`: Enable/disable Cognito authentication
+- `REACT_APP_API_GATEWAY_URL`: API Gateway URL (production)
+- `REACT_APP_PRODUCT_SERVICE_URL`: Product service URL (local)
+- `REACT_APP_CART_SERVICE_URL`: Cart service URL (local)
 
 ### Configuration Files
 - `docker-compose.yml`: Local development setup
@@ -559,8 +557,8 @@ make logs-frontend
 # Check service health
 make health
 
-# Database access
-docker-compose exec postgres psql -U postgres
+# Database access (DynamoDB Local)
+aws dynamodb list-tables --endpoint-url http://localhost:8000
 ```
 
 ## 🤝 Contributing
@@ -612,7 +610,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **FastAPI** - Modern, fast web framework for building APIs
 - **React** - A JavaScript library for building user interfaces
-- **PostgreSQL** - The world's most advanced open source database
+- **DynamoDB** - AWS serverless NoSQL database
 - **Docker** - Containerization platform
 - **AWS** - Cloud computing services
 - **Terraform** - Infrastructure as code

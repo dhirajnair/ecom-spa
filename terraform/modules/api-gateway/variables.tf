@@ -25,31 +25,30 @@ variable "cognito_user_pool_arn" {
   type        = string
 }
 
-# ALB Configuration for backend services
-variable "alb_arn" {
-  description = "ALB ARN for VPC Link connection"
+# Lambda Configuration
+variable "product_service_function_arn" {
+  description = "Product service Lambda function ARN"
   type        = string
 }
 
-variable "alb_dns_name" {
-  description = "ALB DNS name for backend services"
+variable "cart_service_function_arn" {
+  description = "Cart service Lambda function ARN"
   type        = string
 }
 
-variable "alb_zone_id" {
-  description = "ALB hosted zone ID"
+variable "product_service_invoke_arn" {
+  description = "Product service Lambda invoke ARN"
   type        = string
 }
 
-# VPC Configuration (for VPC Link if needed)
-variable "vpc_id" {
-  description = "VPC ID"
+variable "cart_service_invoke_arn" {
+  description = "Cart service Lambda invoke ARN"
   type        = string
 }
 
-variable "private_subnet_ids" {
-  description = "Private subnet IDs for VPC Link"
-  type        = list(string)
+variable "frontend_invoke_arn" {
+  description = "Frontend Lambda invoke ARN"
+  type        = string
 }
 
 # Service Configuration

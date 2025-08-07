@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { User, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { unifiedAuthService } from '../services/cognitoAuth';
+import cognitoConfig from '../config/cognito';
 import toast from 'react-hot-toast';
 
 const Login = () => {
@@ -12,6 +14,10 @@ const Login = () => {
   const location = useLocation();
 
   const from = location.state?.from?.pathname || '/';
+  const authType = unifiedAuthService.getAuthType();
+  const isUsingCognito = authType === 'cognito';
+  const hostedUIUrl = cognitoConfig.getHostedUIUrl();
+  const signUpUrl = cognitoConfig.getSignUpUrl();
 
   const {
     register,
@@ -63,18 +69,69 @@ const Login = () => {
             Sign in to your account
           </h2>
           <p className="mt-2 text-gray-600">
-            Welcome back! Please enter your credentials.
+            {isUsingCognito ? 
+              'Sign in with AWS Cognito or use local demo credentials.' : 
+              'Welcome back! Please enter your demo credentials.'
+            }
           </p>
         </div>
+
+        {/* Cognito Hosted UI Option */}
+        {isUsingCognito && hostedUIUrl && (
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-50 text-gray-500">Sign up or sign in with</span>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <a
+                href={hostedUIUrl}
+                className="w-full flex justify-center items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Sign In
+              </a>
+              
+              {signUpUrl && (
+                <a
+                  href={signUpUrl}
+                  className="w-full flex justify-center items-center px-4 py-2 border border-green-300 rounded-md shadow-sm text-sm font-medium text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Sign Up
+                </a>
+              )}
+            </div>
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-gray-50 text-gray-500">Or continue with demo credentials</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Demo Credentials */}
         <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
           <h3 className="text-sm font-medium text-blue-800 mb-2">
-            Demo Credentials:
+            {isUsingCognito ? 'Local Demo Credentials:' : 'Demo Credentials:'}
           </h3>
           <div className="text-sm text-blue-700 space-y-1">
             <p><strong>Admin:</strong> username: admin, password: admin123</p>
             <p><strong>User:</strong> username: user, password: user123</p>
+            {isUsingCognito && (
+              <p className="text-xs mt-2 text-blue-600">
+                Note: Demo credentials work in development mode only.
+              </p>
+            )}
           </div>
         </div>
 
