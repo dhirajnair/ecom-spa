@@ -438,7 +438,7 @@ resource "aws_api_gateway_stage" "main" {
 
   # Enable access logging
   access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_gateway.arn
+    destination_arn = data.aws_cloudwatch_log_group.api_gateway.arn
     format = jsonencode({
       requestId      = "$context.requestId"
       ip             = "$context.identity.sourceIp"
@@ -468,15 +468,8 @@ resource "aws_api_gateway_stage" "main" {
 }
 
 # CloudWatch Log Group for API Gateway
-resource "aws_cloudwatch_log_group" "api_gateway" {
-  name              = "/aws/apigateway/${var.project_name}-${var.environment}"
-  retention_in_days = 14
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-api-gateway-logs"
-    Environment = var.environment
-    Project     = var.project_name
-  }
+data "aws_cloudwatch_log_group" "api_gateway" {
+  name = "/aws/apigateway/${var.project_name}-${var.environment}"
 }
 
 # IAM role for API Gateway to write CloudWatch Logs

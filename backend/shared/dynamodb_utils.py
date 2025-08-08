@@ -39,47 +39,62 @@ def get_dynamodb_resource():
         # AWS DynamoDB
         return boto3.resource('dynamodb', region_name=config.AWS_REGION)
 
-def create_table_if_not_exists(table_name: str, key_schema: list, attribute_definitions: list, 
-                              billing_mode: str = 'PAY_PER_REQUEST', 
-                              global_secondary_indexes: Optional[list] = None):
-    """Create DynamoDB table if it doesn't exist"""
+def create_table_if_not_exists(
+    table_name: str,
+    key_schema: list,
+    attribute_definitions: list,
+    billing_mode: str = 'PAY_PER_REQUEST',
+    global_secondary_indexes: Optional[list] = None
+):
+    """Create DynamoDB table if it doesn't exist.
+
+    Uses list_tables for existence check to avoid noisy DescribeTable errors in DynamoDB Local logs.
+    """
     dynamodb = get_dynamodb_client()
-    
+
+    # Prefer list_tables to avoid DescribeTable logging a server-side stack trace for missing tables
     try:
-        # Check if table exists
-        dynamodb.describe_table(TableName=table_name)
-        logger.info(f"Table {table_name} already exists")
-        return True
+        existing_tables = set(dynamodb.list_tables().get('TableNames', []))
+        if table_name in existing_tables:
+            logger.info(f"Table {table_name} already exists")
+            return True
     except ClientError as e:
-        if e.response['Error']['Code'] == 'ResourceNotFoundException':
-            # Table doesn't exist, create it
-            logger.info(f"Creating table {table_name}")
-            
-            table_definition = {
-                'TableName': table_name,
-                'KeySchema': key_schema,
-                'AttributeDefinitions': attribute_definitions,
-                'BillingMode': billing_mode
-            }
-            
-            if global_secondary_indexes:
-                table_definition['GlobalSecondaryIndexes'] = global_secondary_indexes
-            
-            try:
-                response = dynamodb.create_table(**table_definition)
-                
-                # Wait for table to be created
-                waiter = dynamodb.get_waiter('table_exists')
-                waiter.wait(TableName=table_name)
-                
-                logger.info(f"Table {table_name} created successfully")
-                return True
-            except ClientError as create_error:
-                logger.error(f"Error creating table {table_name}: {create_error}")
+        logger.warning(f"Failed to list tables when checking for {table_name}: {e}. Falling back to DescribeTable.")
+        try:
+            dynamodb.describe_table(TableName=table_name)
+            logger.info(f"Table {table_name} already exists")
+            return True
+        except ClientError as e2:
+            if e2.response['Error']['Code'] != 'ResourceNotFoundException':
+                logger.error(f"Error checking table {table_name}: {e2}")
                 return False
-        else:
-            logger.error(f"Error checking table {table_name}: {e}")
-            return False
+
+    # Create table
+    logger.info(f"Creating table {table_name}")
+    table_definition = {
+        'TableName': table_name,
+        'KeySchema': key_schema,
+        'AttributeDefinitions': attribute_definitions,
+        'BillingMode': billing_mode
+    }
+
+    if global_secondary_indexes:
+        table_definition['GlobalSecondaryIndexes'] = global_secondary_indexes
+
+    try:
+        dynamodb.create_table(**table_definition)
+        waiter = dynamodb.get_waiter('table_exists')
+        waiter.wait(TableName=table_name)
+        logger.info(f"Table {table_name} created successfully")
+        return True
+    except ClientError as create_error:
+        # If another process created it in the meantime, treat as success
+        error_code = create_error.response.get('Error', {}).get('Code')
+        if error_code == 'ResourceInUseException':
+            logger.info(f"Table {table_name} was created concurrently")
+            return True
+        logger.error(f"Error creating table {table_name}: {create_error}")
+        return False
 
 def safe_get_item(table, key: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     """Safely get item from DynamoDB table"""

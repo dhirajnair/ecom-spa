@@ -90,6 +90,13 @@ variable "cognito_identity_pool_id" {
   type        = string
 }
 
+# Cognito Hosted UI domain prefix (e.g., "ecom-spa-cq-2025")
+variable "cognito_user_pool_domain" {
+  description = "Cognito User Pool domain prefix (without protocol or auth subdomain)"
+  type        = string
+  default     = null
+}
+
 # VPC Configuration (optional for Lambda)
 variable "vpc_id" {
   description = "VPC ID for Lambda functions"

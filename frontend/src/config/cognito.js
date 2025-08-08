@@ -1,20 +1,22 @@
 // AWS Cognito Configuration
 // This configuration supports both local development and production environments
 
+const rc = (typeof window !== 'undefined' && window.__RUNTIME_CONFIG__) || {};
+
 const cognitoConfig = {
   // Environment flag
-  useCognito: process.env.REACT_APP_USE_COGNITO_AUTH === 'true',
+  useCognito: (rc.REACT_APP_USE_COGNITO_AUTH ?? process.env.REACT_APP_USE_COGNITO_AUTH) === 'true',
   
   // AWS Region
-  region: process.env.REACT_APP_AWS_REGION || 'us-west-2',
+  region: rc.REACT_APP_AWS_REGION || process.env.REACT_APP_AWS_REGION || 'ap-south-1',
   
   // Cognito User Pool configuration
-  userPoolId: process.env.REACT_APP_USER_POOL_ID,
-  userPoolWebClientId: process.env.REACT_APP_USER_POOL_WEB_CLIENT_ID,
-  identityPoolId: process.env.REACT_APP_IDENTITY_POOL_ID,
+  userPoolId: rc.REACT_APP_USER_POOL_ID || process.env.REACT_APP_USER_POOL_ID,
+  userPoolWebClientId: rc.REACT_APP_USER_POOL_WEB_CLIENT_ID || process.env.REACT_APP_USER_POOL_WEB_CLIENT_ID,
+  identityPoolId: rc.REACT_APP_IDENTITY_POOL_ID || process.env.REACT_APP_IDENTITY_POOL_ID,
   
   // Optional: Cognito Domain for hosted UI
-  domain: process.env.REACT_APP_USER_POOL_DOMAIN,
+  domain: rc.REACT_APP_USER_POOL_DOMAIN || process.env.REACT_APP_USER_POOL_DOMAIN,
   
   // Validation
   isConfigured() {
@@ -29,13 +31,14 @@ const cognitoConfig = {
     );
   },
   
-  // Get hosted UI URL for sign in
+  // Get hosted UI URL for sign in (stage-aware)
   getHostedUIUrl() {
     if (!this.domain) {
       return null;
     }
-    
-    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
+    // Use absolute API Gateway URL with stage prefix when provided by server runtime config
+    const base = rc.REACT_APP_API_GATEWAY_URL || window.location.origin;
+    const redirectUri = encodeURIComponent(base.replace(/\/$/, '') + '/auth/callback');
     const responseType = 'code';
     const scope = 'email+openid+profile';
     
@@ -46,13 +49,13 @@ const cognitoConfig = {
            `redirect_uri=${redirectUri}`;
   },
 
-  // Get hosted UI URL for sign up
+  // Get hosted UI URL for sign up (stage-aware)
   getSignUpUrl() {
     if (!this.domain) {
       return null;
     }
-    
-    const redirectUri = encodeURIComponent(window.location.origin + '/auth/callback');
+    const base = rc.REACT_APP_API_GATEWAY_URL || window.location.origin;
+    const redirectUri = encodeURIComponent(base.replace(/\/$/, '') + '/auth/callback');
     const responseType = 'code';
     const scope = 'email+openid+profile';
     
@@ -63,13 +66,13 @@ const cognitoConfig = {
            `redirect_uri=${redirectUri}`;
   },
   
-  // Get logout URL
+  // Get logout URL (stage-aware)
   getLogoutUrl() {
     if (!this.domain) {
       return null;
     }
-    
-    const logoutUri = encodeURIComponent(window.location.origin);
+    const base = rc.REACT_APP_API_GATEWAY_URL || window.location.origin;
+    const logoutUri = encodeURIComponent(base.replace(/\/$/, ''));
     
     return `https://${this.domain}.auth.${this.region}.amazoncognito.com/logout?` +
            `client_id=${this.userPoolWebClientId}&` +
@@ -77,26 +80,6 @@ const cognitoConfig = {
   }
 };
 
-// Amplify configuration object (used when initializing AWS Amplify)
-export const amplifyConfig = {
-  Auth: {
-    region: cognitoConfig.region,
-    userPoolId: cognitoConfig.userPoolId,
-    userPoolWebClientId: cognitoConfig.userPoolWebClientId,
-    identityPoolId: cognitoConfig.identityPoolId,
-    
-    // Optional configurations
-    authenticationFlowType: 'USER_SRP_AUTH',
-    
-    // OAuth configuration for hosted UI
-    oauth: cognitoConfig.domain ? {
-      domain: `${cognitoConfig.domain}.auth.${cognitoConfig.region}.amazoncognito.com`,
-      scope: ['email', 'openid', 'profile'],
-      redirectSignIn: window.location.origin + '/auth/callback',
-      redirectSignOut: window.location.origin,
-      responseType: 'code'
-    } : undefined
-  }
-};
+
 
 export default cognitoConfig;

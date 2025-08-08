@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ShoppingCart, Package, Filter } from 'lucide-react';
 import { api } from '../services/api';
 import { useCart } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext';
+
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
@@ -12,7 +12,6 @@ const ProductList = () => {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const { addToCart, isInCart, getItemQuantity } = useCart();
-  const { isAuthenticated } = useAuth();
 
   // Fetch products
   const {
@@ -204,41 +203,31 @@ const ProductList = () => {
                       View Details
                     </Link>
 
-                    {isAuthenticated && (
-                      <button
-                        onClick={() => handleAddToCart(product.id)}
-                        disabled={product.stock === 0 || isInCart(product.id)}
-                        className={`btn flex items-center gap-1 ${
-                          isInCart(product.id)
-                            ? 'btn-secondary cursor-not-allowed'
-                            : 'btn-primary'
-                        }`}
-                        title={
-                          product.stock === 0
-                            ? 'Out of stock'
-                            : isInCart(product.id)
-                            ? `In cart (${getItemQuantity(product.id)})`
-                            : 'Add to cart'
-                        }
-                      >
-                        <ShoppingCart className="w-4 h-4" />
-                        {isInCart(product.id) 
-                          ? `${getItemQuantity(product.id)}` 
-                          : product.stock === 0 
-                          ? 'Out of Stock'
-                          : 'Add'
-                        }
-                      </button>
-                    )}
+                    <button
+                      onClick={() => handleAddToCart(product.id)}
+                      disabled={product.stock === 0 || isInCart(product.id)}
+                      className={`btn flex items-center gap-1 ${
+                        isInCart(product.id)
+                          ? 'btn-secondary cursor-not-allowed'
+                          : 'btn-primary'
+                      }`}
+                      title={
+                        product.stock === 0
+                          ? 'Out of stock'
+                          : isInCart(product.id)
+                          ? `In cart (${getItemQuantity(product.id)})`
+                          : 'Add to cart'
+                      }
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      {isInCart(product.id) 
+                        ? `${getItemQuantity(product.id)}` 
+                        : product.stock === 0 
+                        ? 'Out of Stock'
+                        : 'Add'
+                      }
+                    </button>
                   </div>
-
-                  {!isAuthenticated && (
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      <Link to="/login" className="text-blue-600 hover:underline">
-                        Login
-                      </Link> to add to cart
-                    </p>
-                  )}
                 </div>
               </div>
             ))}

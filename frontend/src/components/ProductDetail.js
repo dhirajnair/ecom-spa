@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from 'react-query';
-import { ArrowLeft, ShoppingCart, Package, Star } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Package } from 'lucide-react';
 import { api } from '../services/api';
 import { useCart } from '../contexts/CartContext';
-import { useAuth } from '../contexts/AuthContext';
+
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
@@ -12,8 +12,7 @@ const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(1);
-  const { addToCart, isInCart, getItemQuantity } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { addToCart, getItemQuantity } = useCart();
 
   // Fetch product details
   const {
@@ -154,82 +153,69 @@ const ProductDetail = () => {
           </div>
 
           {/* Add to Cart Section */}
-          {isAuthenticated ? (
-            <div className="border-t pt-6">
-              {product.stock > 0 ? (
-                <>
-                  {/* Quantity Selector */}
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantity
-                    </label>
-                    <select
-                      value={quantity}
-                      onChange={handleQuantityChange}
-                      className="input w-24"
-                    >
-                      {Array.from({ length: maxQuantity }, (_, i) => i + 1).map(num => (
-                        <option key={num} value={num}>
-                          {num}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Current cart status */}
-                  {inCartQuantity > 0 && (
-                    <div className="mb-4 p-3 bg-blue-50 rounded-md">
-                      <p className="text-sm text-blue-800">
-                        <ShoppingCart className="w-4 h-4 inline mr-1" />
-                        You have {inCartQuantity} of this item in your cart
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Add to Cart Button */}
-                  <button
-                    onClick={handleAddToCart}
-                    className="btn btn-primary btn-lg w-full flex items-center justify-center gap-2"
+          <div className="border-t pt-6">
+            {product.stock > 0 ? (
+              <>
+                {/* Quantity Selector */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantity
+                  </label>
+                  <select
+                    value={quantity}
+                    onChange={handleQuantityChange}
+                    className="input w-24"
                   >
-                    <ShoppingCart className="w-5 h-5" />
-                    Add {quantity} to Cart
-                  </button>
-
-                  {/* Cart link */}
-                  {inCartQuantity > 0 && (
-                    <div className="mt-4 text-center">
-                      <Link 
-                        to="/cart" 
-                        className="text-blue-600 hover:underline text-sm"
-                      >
-                        View Cart →
-                      </Link>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-red-600 font-medium mb-4">
-                    This product is currently out of stock
-                  </p>
-                  <button className="btn btn-secondary" disabled>
-                    Out of Stock
-                  </button>
+                    {Array.from({ length: maxQuantity }, (_, i) => i + 1).map(num => (
+                      <option key={num} value={num}>
+                        {num}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="border-t pt-6">
+
+                {/* Current cart status */}
+                {inCartQuantity > 0 && (
+                  <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <ShoppingCart className="w-4 h-4 inline mr-1" />
+                      You have {inCartQuantity} of this item in your cart
+                    </p>
+                  </div>
+                )}
+
+                {/* Add to Cart Button */}
+                <button
+                  onClick={handleAddToCart}
+                  className="btn btn-primary btn-lg w-full flex items-center justify-center gap-2"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  Add {quantity} to Cart
+                </button>
+
+                {/* Cart link */}
+                {inCartQuantity > 0 && (
+                  <div className="mt-4 text-center">
+                    <Link 
+                      to="/cart" 
+                      className="text-blue-600 hover:underline text-sm"
+                    >
+                      View Cart →
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
               <div className="text-center py-4">
-                <p className="text-gray-600 mb-4">
-                  Please login to add this product to your cart
+                <p className="text-red-600 font-medium mb-4">
+                  This product is currently out of stock
                 </p>
-                <Link to="/login" className="btn btn-primary btn-lg">
-                  Login to Purchase
-                </Link>
+                <button className="btn btn-secondary" disabled>
+                  Out of Stock
+                </button>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 

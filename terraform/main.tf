@@ -109,26 +109,37 @@ resource "null_resource" "build_and_push_images" {
     interpreter = ["/bin/bash", "-lc"]
     command = <<-EOT
       set -euo pipefail
+      export DOCKER_BUILDKIT=1
+      export BUILDKIT_PROGRESS=plain
       ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
       REGION=${var.aws_region}
       aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
       # Build product-service (context: backend)
+      docker pull ${module.ecr.product_service_repository_url}:latest || true
       docker build --platform linux/amd64 \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from ${module.ecr.product_service_repository_url}:latest \
         -f ${path.root}/../backend/product-service/Dockerfile \
         -t product-service ${path.root}/../backend
       docker tag product-service:latest ${module.ecr.product_service_repository_url}:latest
       docker push ${module.ecr.product_service_repository_url}:latest
 
       # Build cart-service (context: backend)
+      docker pull ${module.ecr.cart_service_repository_url}:latest || true
       docker build --platform linux/amd64 \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from ${module.ecr.cart_service_repository_url}:latest \
         -f ${path.root}/../backend/cart-service/Dockerfile \
         -t cart-service ${path.root}/../backend
       docker tag cart-service:latest ${module.ecr.cart_service_repository_url}:latest
       docker push ${module.ecr.cart_service_repository_url}:latest
 
       # Build frontend (context: frontend)
+      docker pull ${module.ecr.frontend_repository_url}:latest || true
       docker build --platform linux/amd64 \
+        --build-arg BUILDKIT_INLINE_CACHE=1 \
+        --cache-from ${module.ecr.frontend_repository_url}:latest \
         -f ${path.root}/../frontend/Dockerfile \
         -t frontend ${path.root}/../frontend
       docker tag frontend:latest ${module.ecr.frontend_repository_url}:latest
@@ -170,6 +181,7 @@ module "lambda" {
   cognito_web_client_id    = module.cognito.web_client_id
   cognito_api_client_id    = module.cognito.api_client_id
   cognito_identity_pool_id = module.cognito.identity_pool_id
+  cognito_user_pool_domain = module.cognito.user_pool_domain
   
   depends_on = [
     null_resource.build_and_push_images,
@@ -227,12 +239,51 @@ resource "null_resource" "update_cognito_callbacks" {
       API_URL=${module.api_gateway.api_url}
       USER_POOL_ID=${module.cognito.user_pool_id}
       WEB_CLIENT_ID=${module.cognito.web_client_id}
-      # Update callback and logout URLs to include API Gateway endpoints alongside localhost
-      aws cognito-idp update-user-pool-client \
-        --user-pool-id "$USER_POOL_ID" \
-        --client-id "$WEB_CLIENT_ID" \
-        --callback-urls "$API_URL/" "$API_URL/auth/callback" "http://localhost:3000/" "http://localhost:3000/auth/callback" \
-        --logout-urls   "$API_URL/" "http://localhost:3000/" "http://localhost:3000/auth/logout"
+      # Resolve AWS CLI v2 and enforce OAuth settings (these can be cleared by updates otherwise)
+      AWS_BIN="$${AWS_BIN:-}"
+      if [ -z "$AWS_BIN" ]; then
+        if [ -x "/usr/local/bin/aws" ]; then AWS_BIN="/usr/local/bin/aws"; fi
+      fi
+      if [ -z "$AWS_BIN" ]; then
+        if [ -x "/opt/homebrew/bin/aws" ]; then AWS_BIN="/opt/homebrew/bin/aws"; fi
+      fi
+      if [ -z "$AWS_BIN" ]; then
+        AWS_BIN="$(command -v aws)"
+      fi
+      if ! "$AWS_BIN" --version 2>&1 | grep -q 'aws-cli/2'; then
+        echo "ERROR: AWS CLI v2 is required for OAuth flags. Detected: $($AWS_BIN --version 2>&1)" >&2
+        exit 1
+      fi
+
+      # Build JSON payload to avoid older CLI arg parsing issues
+      TMP_JSON=$(mktemp)
+      cat > "$TMP_JSON" <<JSON
+{
+  "UserPoolId": "$USER_POOL_ID",
+  "ClientId": "$WEB_CLIENT_ID",
+  "AllowedOAuthFlowsUserPoolClient": true,
+  "AllowedOAuthFlows": ["code"],
+  "AllowedOAuthScopes": ["openid", "email", "profile"],
+  "SupportedIdentityProviders": ["COGNITO"],
+  "CallbackURLs": [
+    "$API_URL/",
+    "$API_URL/auth/callback",
+    "http://localhost:3000/",
+    "http://localhost:3000/auth/callback"
+  ],
+  "LogoutURLs": [
+    "$API_URL/",
+    "http://localhost:3000/",
+    "http://localhost:3000/auth/logout"
+  ]
+}
+JSON
+
+      "$AWS_BIN" cognito-idp update-user-pool-client \
+        --region ${var.aws_region} \
+        --cli-input-json file://"$TMP_JSON"
+
+      rm -f "$TMP_JSON"
     EOT
   }
 
@@ -317,7 +368,7 @@ resource "null_resource" "update_lambda_env" {
 
       aws lambda update-function-configuration --region $REGION \
         --function-name "$FRONTEND_FN_NAME" \
-        --environment "Variables={REACT_APP_USE_COGNITO_AUTH=true,REACT_APP_USER_POOL_ID=$USER_POOL_ID,REACT_APP_USER_POOL_WEB_CLIENT_ID=$WEB_CLIENT_ID,REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID,REACT_APP_API_GATEWAY_URL=$API_URL}"
+        --environment "Variables={REACT_APP_USE_COGNITO_AUTH=true,REACT_APP_USER_POOL_ID=$USER_POOL_ID,REACT_APP_USER_POOL_WEB_CLIENT_ID=$WEB_CLIENT_ID,REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID,REACT_APP_API_GATEWAY_URL=$API_URL,REACT_APP_AWS_REGION=${var.aws_region},REACT_APP_USER_POOL_DOMAIN=${module.cognito.user_pool_domain}}"
     EOT
   }
 

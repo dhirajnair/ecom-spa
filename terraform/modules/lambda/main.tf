@@ -203,6 +203,9 @@ resource "aws_lambda_function" "frontend" {
       REACT_APP_USE_COGNITO_AUTH   = "true"
       REACT_APP_USER_POOL_ID       = var.cognito_user_pool_id
       REACT_APP_USER_POOL_WEB_CLIENT_ID = var.cognito_web_client_id
+      REACT_APP_AWS_REGION         = var.aws_region
+      REACT_APP_USER_POOL_DOMAIN   = coalesce(var.cognito_user_pool_domain, "")
+      REACT_APP_API_GATEWAY_URL    = "${var.environment}" # Placeholder, will be updated post-apply
     }
   }
 

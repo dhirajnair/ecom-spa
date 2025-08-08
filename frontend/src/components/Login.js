@@ -1,15 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { User, Lock, Eye, EyeOff, ExternalLink } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { unifiedAuthService } from '../services/cognitoAuth';
 import cognitoConfig from '../config/cognito';
 import toast from 'react-hot-toast';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const { login, isAuthenticated, loading, error, clearError } = useAuth();
+  // No global auth state - login works without it
+  const isAuthenticated = false;
+  const loading = false;
+  const error = null;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -25,27 +27,29 @@ const Login = () => {
     formState: { errors, isSubmitting }
   } = useForm();
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate(from, { replace: true });
-    }
-  }, [isAuthenticated, navigate, from]);
-
-  // Clear error when component mounts
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-
   const onSubmit = async (data) => {
-    try {
-      clearError();
-      await login(data.username, data.password);
-      toast.success('Login successful!');
-      navigate(from, { replace: true });
-    } catch (error) {
-      // Error is handled by the auth context
-      console.error('Login failed:', error);
+    if (!isUsingCognito) {
+      // Handle local demo login
+      try {
+        // Set auth state in localStorage for local demo
+        const authData = {
+          user: { username: data.username || 'Demo User' },
+          timestamp: Date.now()
+        };
+        localStorage.setItem('demo_auth', JSON.stringify(authData));
+        
+        toast.success('Login successful!');
+        navigate(from, { replace: true });
+      } catch (error) {
+        console.error('Login failed:', error);
+      }
+    } else {
+      // For Cognito, redirect to hosted UI
+      if (hostedUIUrl) {
+        window.location.href = hostedUIUrl;
+      } else {
+        toast.error('Cognito configuration not found');
+      }
     }
   };
 
@@ -89,8 +93,14 @@ const Login = () => {
             </div>
             
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <a
-                href={hostedUIUrl}
+                <a
+                  href={hostedUIUrl || '#'}
+                  onClick={(e) => {
+                    if (!hostedUIUrl) {
+                      e.preventDefault();
+                      unifiedAuthService.oauthRedirectSignIn();
+                    }
+                  }}
                 className="w-full flex justify-center items-center px-4 py-2 border border-blue-300 rounded-md shadow-sm text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
               >
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -231,12 +241,9 @@ const Login = () => {
 
           {/* Back to Home */}
           <div className="text-center">
-            <Link 
-              to="/" 
-              className="text-blue-600 hover:text-blue-500 text-sm"
-            >
+            <a href="/" className="text-blue-600 hover:text-blue-500 text-sm">
               ← Back to Products
-            </Link>
+            </a>
           </div>
         </form>
 

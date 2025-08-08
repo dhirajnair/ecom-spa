@@ -5,6 +5,7 @@ import os
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 from .routes import router
 from .database import create_tables
 
@@ -56,4 +57,12 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     port = int(os.getenv("PORT", "8002"))
-    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        reload=os.getenv("ENV", "local") == "local",
+    )
+
+# AWS Lambda handler (for container image or ZIP with Lambda runtime)
+handler = Mangum(app)

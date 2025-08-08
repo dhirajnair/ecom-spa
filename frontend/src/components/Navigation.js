@@ -1,17 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ShoppingCart, User, LogOut, Home, Package } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
 import { useCart } from '../contexts/CartContext';
+import cognitoConfig from '../config/cognito';
 
 const Navigation = () => {
-  const { isAuthenticated, user, logout } = useAuth();
-  const { getItemCount } = useCart();
+  // Check authentication state from localStorage for local demo
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const { itemCount } = useCart();
   const location = useLocation();
-  const itemCount = getItemCount();
+
+  // Check auth state on mount and location changes
+  useEffect(() => {
+    const checkAuthState = () => {
+      // For local development, check localStorage
+      const localAuth = localStorage.getItem('demo_auth');
+      if (localAuth) {
+        try {
+          const authData = JSON.parse(localAuth);
+          setIsAuthenticated(true);
+          setUser(authData.user || { username: 'Demo User' });
+        } catch (e) {
+          setIsAuthenticated(false);
+          setUser(null);
+        }
+      } else {
+        setIsAuthenticated(false);
+        setUser(null);
+      }
+    };
+
+    checkAuthState();
+    
+    // Listen for auth changes (e.g., from login page)
+    const handleStorageChange = (e) => {
+      if (e.key === 'demo_auth') {
+        checkAuthState();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [location]);
 
   const handleLogout = () => {
-    logout();
+    // If using Cognito, redirect to logout URL
+    if (cognitoConfig.useCognito && cognitoConfig.isConfigured()) {
+      const logoutUrl = cognitoConfig.getLogoutUrl();
+      if (logoutUrl) {
+        window.location.href = logoutUrl;
+      }
+    } else {
+      // Local logout - remove auth from localStorage
+      localStorage.removeItem('demo_auth');
+      localStorage.removeItem('ecom_cart'); // Also clear cart on logout
+      setIsAuthenticated(false);
+      setUser(null);
+      // Refresh the page to reset app state
+      window.location.href = '/';
+    }
   };
 
   const isActive = (path) => {

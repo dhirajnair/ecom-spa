@@ -77,10 +77,10 @@ output "api_config" {
 # CloudWatch Log Group
 output "log_group_name" {
   description = "CloudWatch log group name for API Gateway"
-  value       = aws_cloudwatch_log_group.api_gateway.name
+  value       = data.aws_cloudwatch_log_group.api_gateway.name
 }
 
 output "log_group_arn" {
   description = "CloudWatch log group ARN for API Gateway"
-  value       = aws_cloudwatch_log_group.api_gateway.arn
+  value       = data.aws_cloudwatch_log_group.api_gateway.arn
 }

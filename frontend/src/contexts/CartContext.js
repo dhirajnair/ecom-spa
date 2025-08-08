@@ -1,6 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { api } from '../services/api';
-import { useAuth } from './AuthContext';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 
 // Cart state
@@ -15,8 +13,11 @@ const initialState = {
 const cartActions = {
   SET_LOADING: 'SET_LOADING',
   SET_CART: 'SET_CART',
-  SET_ERROR: 'SET_ERROR',
+  ADD_ITEM: 'ADD_ITEM',
+  REMOVE_ITEM: 'REMOVE_ITEM',
+  UPDATE_ITEM: 'UPDATE_ITEM',
   CLEAR_CART: 'CLEAR_CART',
+  SET_ERROR: 'SET_ERROR',
   CLEAR_ERROR: 'CLEAR_ERROR'
 };
 
@@ -29,38 +30,88 @@ const cartReducer = (state, action) => {
         loading: action.payload,
         error: null
       };
-    
+
     case cartActions.SET_CART:
       return {
         ...state,
-        items: action.payload.items || [],
-        total: action.payload.total || 0,
+        ...action.payload,
         loading: false,
         error: null
       };
-    
+
+    case cartActions.ADD_ITEM: {
+      const existingItem = state.items.find(item => item.product_id === action.payload.product_id);
+      let newItems;
+      
+      if (existingItem) {
+        newItems = state.items.map(item =>
+          item.product_id === action.payload.product_id
+            ? { ...item, quantity: item.quantity + action.payload.quantity }
+            : item
+        );
+      } else {
+        newItems = [...state.items, action.payload];
+      }
+      
+      const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      return {
+        ...state,
+        items: newItems,
+        total: newTotal,
+        loading: false,
+        error: null
+      };
+    }
+
+    case cartActions.REMOVE_ITEM: {
+      const newItems = state.items.filter(item => item.product_id !== action.payload);
+      const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      return {
+        ...state,
+        items: newItems,
+        total: newTotal,
+        loading: false,
+        error: null
+      };
+    }
+
+    case cartActions.UPDATE_ITEM: {
+      const newItems = state.items.map(item =>
+        item.product_id === action.payload.product_id
+          ? { ...item, quantity: action.payload.quantity }
+          : item
+      );
+      const newTotal = newItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      return {
+        ...state,
+        items: newItems,
+        total: newTotal,
+        loading: false,
+        error: null
+      };
+    }
+
+    case cartActions.CLEAR_CART:
+      return {
+        ...initialState
+      };
+
     case cartActions.SET_ERROR:
       return {
         ...state,
         loading: false,
         error: action.payload
       };
-    
-    case cartActions.CLEAR_CART:
-      return {
-        ...state,
-        items: [],
-        total: 0,
-        loading: false,
-        error: null
-      };
-    
+
     case cartActions.CLEAR_ERROR:
       return {
         ...state,
         error: null
       };
-    
+
     default:
       return state;
   }
@@ -72,136 +123,120 @@ const CartContext = createContext();
 // Cart provider component
 export const CartProvider = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
-  const { isAuthenticated } = useAuth();
 
-  // Load cart when user is authenticated
+  // Save cart to localStorage whenever it changes
   useEffect(() => {
-    if (isAuthenticated) {
-      loadCart();
-    } else {
-      dispatch({ type: cartActions.CLEAR_CART });
+    if (state.items.length > 0 || state.total > 0) {
+      localStorage.setItem('ecom_cart', JSON.stringify({
+        items: state.items,
+        total: state.total
+      }));
     }
-  }, [isAuthenticated]);
+  }, [state.items, state.total]);
 
-  // Load cart from API
-  const loadCart = async () => {
-    if (!isAuthenticated) return;
-
-    dispatch({ type: cartActions.SET_LOADING, payload: true });
-    
+  // Load cart from localStorage on mount
+  useEffect(() => {
     try {
-      const cartData = await api.cart.get();
-      dispatch({
-        type: cartActions.SET_CART,
-        payload: cartData
-      });
+      const savedCart = localStorage.getItem('ecom_cart');
+      if (savedCart) {
+        const cartData = JSON.parse(savedCart);
+        dispatch({
+          type: cartActions.SET_CART,
+          payload: cartData
+        });
+      }
     } catch (error) {
-      console.error('Error loading cart:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to load cart';
-      dispatch({
-        type: cartActions.SET_ERROR,
-        payload: errorMessage
-      });
+      console.error('Error loading cart from localStorage:', error);
     }
-  };
+  }, []);
 
-  // Add item to cart
-  const addToCart = async (productId, quantity = 1) => {
-    if (!isAuthenticated) {
-      toast.error('Please login to add items to cart');
-      return;
-    }
-
+  // Add item to cart (local storage only for now)
+  const addToCart = useCallback(async (productId, quantity = 1) => {
     dispatch({ type: cartActions.SET_LOADING, payload: true });
     
     try {
-      await api.cart.add(productId, quantity);
-      await loadCart(); // Reload cart to get updated data
-      toast.success('Product added to cart');
+      // For demo purposes, we'll create a mock product item
+      // In a real app, you'd fetch the product details from the API
+      const mockProduct = {
+        product_id: productId,
+        name: `Product ${productId}`,
+        price: 29.99,
+        quantity: quantity
+      };
+      
+      dispatch({ 
+        type: cartActions.ADD_ITEM, 
+        payload: mockProduct
+      });
+      
+      toast.success(`Added item to cart`);
     } catch (error) {
       console.error('Error adding to cart:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to add product to cart';
       dispatch({
         type: cartActions.SET_ERROR,
-        payload: errorMessage
+        payload: 'Failed to add item to cart'
       });
-      toast.error(errorMessage);
+      toast.error('Failed to add item to cart');
     }
-  };
+  }, []);
 
   // Remove item from cart
-  const removeFromCart = async (productId) => {
-    if (!isAuthenticated) return;
+  const removeFromCart = useCallback((productId) => {
+    dispatch({ type: cartActions.REMOVE_ITEM, payload: productId });
+    toast.success('Removed item from cart');
+  }, []);
 
-    dispatch({ type: cartActions.SET_LOADING, payload: true });
-    
-    try {
-      await api.cart.remove(productId);
-      await loadCart(); // Reload cart to get updated data
-      toast.success('Product removed from cart');
-    } catch (error) {
-      console.error('Error removing from cart:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to remove product from cart';
+  // Update item quantity
+  const updateQuantity = useCallback((productId, quantity) => {
+    if (quantity <= 0) {
+      removeFromCart(productId);
+    } else {
       dispatch({
-        type: cartActions.SET_ERROR,
-        payload: errorMessage
+        type: cartActions.UPDATE_ITEM,
+        payload: { product_id: productId, quantity }
       });
-      toast.error(errorMessage);
     }
-  };
+  }, [removeFromCart]);
 
   // Clear cart
-  const clearCart = async () => {
-    if (!isAuthenticated) return;
+  const clearCart = useCallback(() => {
+    dispatch({ type: cartActions.CLEAR_CART });
+    localStorage.removeItem('ecom_cart');
+    toast.success('Cart cleared');
+  }, []);
 
-    dispatch({ type: cartActions.SET_LOADING, payload: true });
-    
-    try {
-      await api.cart.clear();
-      dispatch({ type: cartActions.CLEAR_CART });
-      toast.success('Cart cleared');
-    } catch (error) {
-      console.error('Error clearing cart:', error);
-      const errorMessage = error.response?.data?.detail || 'Failed to clear cart';
-      dispatch({
-        type: cartActions.SET_ERROR,
-        payload: errorMessage
-      });
-      toast.error(errorMessage);
-    }
-  };
-
-  // Clear error
-  const clearError = () => {
-    dispatch({ type: cartActions.CLEAR_ERROR });
-  };
-
-  // Get cart item count
-  const getItemCount = () => {
-    return state.items.reduce((total, item) => total + item.quantity, 0);
-  };
-
-  // Check if product is in cart
-  const isInCart = (productId) => {
-    return state.items.some(item => item.product_id === productId);
-  };
-
-  // Get item quantity in cart
-  const getItemQuantity = (productId) => {
+  // Get item quantity
+  const getItemQuantity = useCallback((productId) => {
     const item = state.items.find(item => item.product_id === productId);
     return item ? item.quantity : 0;
-  };
+  }, [state.items]);
+
+  // Check if item is in cart
+  const isInCart = useCallback((productId) => {
+    return state.items.some(item => item.product_id === productId);
+  }, [state.items]);
+
+  // Clear error
+  const clearError = useCallback(() => {
+    dispatch({ type: cartActions.CLEAR_ERROR });
+  }, []);
 
   const value = {
+    // State
     ...state,
+    
+    // Actions
     addToCart,
     removeFromCart,
+    updateQuantity,
     clearCart,
-    clearError,
-    loadCart,
-    getItemCount,
+    getItemQuantity,
     isInCart,
-    getItemQuantity
+    clearError,
+    
+    // Helper getters
+    itemCount: state.items.reduce((count, item) => count + item.quantity, 0),
+    hasItems: state.items.length > 0
   };
 
   return (
@@ -220,4 +255,4 @@ export const useCart = () => {
   return context;
 };
 
-export default CartContext;
+export default CartProvider;
