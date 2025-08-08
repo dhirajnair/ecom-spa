@@ -21,12 +21,32 @@ const ProductList = () => {
     refetch: refetchProducts
   } = useQuery(
     ['products', selectedCategory],
-    () => api.products.getAll({ 
-      category: selectedCategory || undefined,
-      limit: 50 
-    }),
+    async () => {
+      console.log('🛒 ProductList: Fetching products with category:', selectedCategory);
+      console.log('🛒 ProductList: Current location:', window.location.href);
+      console.log('🛒 ProductList: Current basename from router might be affecting API calls');
+      try {
+        const result = await api.products.getAll({ 
+          category: selectedCategory || undefined,
+          limit: 50 
+        });
+        console.log('✅ ProductList: Products API response:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ ProductList: Products API error:', error);
+        console.error('❌ ProductList: Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL
+        });
+        throw error;
+      }
+    },
     {
       staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     }
   );
 

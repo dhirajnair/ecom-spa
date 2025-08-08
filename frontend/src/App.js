@@ -21,9 +21,9 @@ function App() {
           <main>
             <Routes>
               {/* Root: Show product dashboard (public) */}
-              <Route path="/" element={<ProductList />} />
-              <Route path="/products/:productId" element={<ProductDetail />} />
-              <Route path="/login" element={<Login />} />
+                                   <Route path="/" element={<ProductList />} />
+                     <Route path="/products/:productId" element={<ProductDetail />} />
+                     <Route path="/login" element={<Login />} />
               
               {/* Auth callback - only if using Cognito */}
               {cognitoConfig.useCognito && cognitoConfig.isConfigured() && (

@@ -39,33 +39,47 @@ const authService = axios.create({
 });
 
 // Logging for debugging
-if ((rc.REACT_APP_DEBUG || process.env.REACT_APP_DEBUG) === 'true') {
-  console.log('API Configuration:', {
-    USE_API_GATEWAY,
-    API_GATEWAY_URL,
-    PRODUCT_SERVICE_URL,
-    CART_SERVICE_URL,
-    AUTH_SERVICE_URL
-  });
-}
+console.log('API Configuration:', {
+  USE_API_GATEWAY,
+  API_GATEWAY_URL,
+  PRODUCT_SERVICE_URL,
+  CART_SERVICE_URL,
+  AUTH_SERVICE_URL,
+  productServiceBaseURL: USE_API_GATEWAY ? `${PRODUCT_SERVICE_URL}/api` : PRODUCT_SERVICE_URL,
+  cartServiceBaseURL: USE_API_GATEWAY ? `${CART_SERVICE_URL}/api` : CART_SERVICE_URL,
+});
 
 // Request interceptor to add auth token
 const addAuthToken = async (config) => {
   try {
-    // Import dynamically to avoid circular dependencies
-    const { unifiedAuthService } = await import('./cognitoAuth');
-    const token = await unifiedAuthService.getToken();
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // First try to get token from stored auth data
+    const authData = localStorage.getItem('demo_auth');
+    if (authData) {
+      const parsed = JSON.parse(authData);
+      if (parsed.accessToken) {
+        config.headers.Authorization = `Bearer ${parsed.accessToken}`;
+        console.log('Using Cognito JWT token for API call');
+        return config;
+      }
     }
-  } catch (error) {
-    console.warn('Failed to get auth token:', error);
-    // Fallback to localStorage for backward compatibility
+    
+    // Fallback to direct token storage
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('Using fallback JWT token for API call');
+      return config;
     }
+    
+    // Try the unified auth service as last resort
+    const { unifiedAuthService } = await import('./cognitoAuth');
+    const serviceToken = await unifiedAuthService.getToken();
+    if (serviceToken) {
+      config.headers.Authorization = `Bearer ${serviceToken}`;
+      console.log('Using unified auth service token for API call');
+    }
+  } catch (error) {
+    console.warn('Failed to get auth token:', error);
   }
   return config;
 };

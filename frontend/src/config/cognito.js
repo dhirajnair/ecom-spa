@@ -72,11 +72,12 @@ const cognitoConfig = {
       return null;
     }
     const base = rc.REACT_APP_API_GATEWAY_URL || window.location.origin;
-    const logoutUri = encodeURIComponent(base.replace(/\/$/, ''));
+    const redirectUri = encodeURIComponent(base.replace(/\/$/, ''));
     
     return `https://${this.domain}.auth.${this.region}.amazoncognito.com/logout?` +
            `client_id=${this.userPoolWebClientId}&` +
-           `logout_uri=${logoutUri}`;
+           `redirect_uri=${redirectUri}&` +
+           `response_type=code`;
   }
 };
 

@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children }) => {
       const localAuth = localStorage.getItem('demo_auth');
       if (localAuth) {
         try {
-          const authData = JSON.parse(localAuth);
+          JSON.parse(localAuth); // Just validate the JSON is parseable
           setIsAuthenticated(true);
         } catch (e) {
           setIsAuthenticated(false);
