@@ -116,7 +116,7 @@ const Navigation = () => {
       console.log('🚪 Stage detected:', stage, 'Logout URL:', stageLogoutUrl);
       
       // Alert for debugging
-      alert(`🚪 STAGE-AWARE!!!! LOGOUT:\nCurrent: ${currentPath}\nStage: ${stage}\nLogout URL: ${stageLogoutUrl}`);
+      //alert(`🚪 STAGE-AWARE!!!! LOGOUT:\nCurrent: ${currentPath}\nStage: ${stage}\nLogout URL: ${stageLogoutUrl}`);
       
       // Use stage-aware logout URL
       window.location.href = stageLogoutUrl;

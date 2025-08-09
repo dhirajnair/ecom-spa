@@ -126,10 +126,10 @@ resource "aws_cognito_user_pool_client" "web_client" {
   
   callback_urls = concat(
     [
-      "http://localhost:3000/auth/callback",
-      "http://localhost:3000/"
+      "http://localhost:3001/auth/callback",
+      "http://localhost:3001/"
     ],
-    var.frontend_domain == "http://localhost:3000" ? [] : [
+    var.frontend_domain == "http://localhost:3001" ? [] : [
       "${local.frontend_base}/${var.stage_name}/auth/callback",
       "${local.frontend_base}/${var.stage_name}/"
     ]
@@ -137,11 +137,11 @@ resource "aws_cognito_user_pool_client" "web_client" {
   
   logout_urls = concat(
     [
-      "http://localhost:3000/home",
-      "http://localhost:3000/auth/logout",
-      "http://localhost:3000/"
+      "http://localhost:3001/home",
+      "http://localhost:3001/auth/logout",
+      "http://localhost:3001/"
     ],
-    var.frontend_domain == "http://localhost:3000" ? [] : [
+    var.frontend_domain == "http://localhost:3001" ? [] : [
       "${local.frontend_base}/${var.stage_name}/home",
       "${local.frontend_base}/${var.stage_name}/"
     ]

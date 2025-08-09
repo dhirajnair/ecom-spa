@@ -93,21 +93,23 @@ const ProductDetail = () => {
         Back
       </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Product Image */}
-        <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
-          <img
-            src={product.image_url}
-            alt={product.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.target.src = 'https://via.placeholder.com/600x600?text=No+Image';
-            }}
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        {/* Product Image - Smaller and more proportionate */}
+        <div className="lg:col-span-2">
+          <div className="aspect-[4/3] overflow-hidden rounded-lg bg-gray-100 max-w-md mx-auto">
+            <img
+              src={product.image_url}
+              alt={product.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/400x300?text=No+Image';
+              }}
+            />
+          </div>
         </div>
 
         {/* Product Information */}
-        <div className="flex flex-col">
+        <div className="lg:col-span-3 flex flex-col">
           {/* Category */}
           <div className="mb-4">
             <span className="text-sm text-blue-600 bg-blue-50 px-3 py-1 rounded-full">

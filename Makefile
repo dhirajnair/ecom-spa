@@ -107,7 +107,7 @@ test-api:
 	curl -f http://localhost:3001/api/products || echo "❌ Gateway products endpoint failed"
 	@echo ""
 	@echo "Testing Frontend..."
-	curl -f http://localhost:3000 || echo "❌ Frontend not responding"
+	curl -f http://localhost:3001 || echo "❌ Frontend not responding"
 
 # Run tests
 test:

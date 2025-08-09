@@ -124,26 +124,44 @@ const Login = () => {
           </span>
         </div>
 
+        {/* Demo credentials info */}
+        {!isUsingCognito && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+            <div className="text-center">
+              <h3 className="text-sm font-medium text-yellow-800 mb-2">Demo Credentials</h3>
+              <div className="text-sm text-yellow-700 space-y-1">
+                <p><strong>Username:</strong> admin</p>
+                <p><strong>Password:</strong> admin123</p>
+              </div>
+              <p className="text-xs text-yellow-600 mt-2">
+                Use these credentials or enter any username/password for demo mode
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Sign in form */}
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
             {/* Username */}
             <div>
-              <label htmlFor="username" className="sr-only">
-                Username
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+                {isUsingCognito ? 'Username (not required)' : 'Username or Email'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
+                  <User className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
+                  id="username"
                   {...register('username', { 
                     required: !isUsingCognito ? 'Username is required' : false 
                   })}
                   type="text"
-                  placeholder={isUsingCognito ? 'Not required for Cognito' : 'Username'}
+                  placeholder={isUsingCognito ? 'Not required for Cognito' : 'Enter admin or any username'}
                   disabled={isUsingCognito}
-                  className={`input pl-10 ${isUsingCognito ? 'bg-gray-100' : ''}`}
+                  defaultValue={!isUsingCognito ? 'admin' : ''}
+                  className={`input pl-12 ${isUsingCognito ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
               </div>
               {errors.username && (
@@ -153,32 +171,34 @@ const Login = () => {
 
             {/* Password */}
             <div>
-              <label htmlFor="password" className="sr-only">
-                Password
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                {isUsingCognito ? 'Password (not required)' : 'Password'}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+                  <Lock className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
+                  id="password"
                   {...register('password', { 
                     required: !isUsingCognito ? 'Password is required' : false 
                   })}
                   type={showPassword ? 'text' : 'password'}
-                  placeholder={isUsingCognito ? 'Not required for Cognito' : 'Password'}
+                  placeholder={isUsingCognito ? 'Not required for Cognito' : 'Enter admin123 or any password'}
                   disabled={isUsingCognito}
-                  className={`input pl-10 pr-10 ${isUsingCognito ? 'bg-gray-100' : ''}`}
+                  defaultValue={!isUsingCognito ? 'admin123' : ''}
+                  className={`input pl-12 pr-12 ${isUsingCognito ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 />
                 {!isUsingCognito && (
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-50 rounded-r-md transition-colors"
                   >
                     {showPassword ? (
-                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <EyeOff className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                     ) : (
-                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                      <Eye className="h-4 w-4 text-gray-400 hover:text-gray-600" />
                     )}
                   </button>
                 )}

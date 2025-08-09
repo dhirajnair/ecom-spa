@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=True, description="Debug mode")
     
     # Additional Configuration
-    CORS_ORIGINS: str = Field(default="http://localhost:3000,http://localhost", description="CORS origins")
+    CORS_ORIGINS: str = Field(default="http://localhost:3001,http://localhost", description="CORS origins")
     ALLOWED_HOSTS: str = Field(default="localhost,127.0.0.1", description="Allowed hosts")
     
     @field_validator("JWT_SECRET_KEY")

@@ -106,14 +106,9 @@ variable "cognito_domain_prefix" {
 variable "frontend_domain" {
   description = "Frontend domain for Cognito callback URLs"
   type        = string
-  default     = "http://localhost:3000"
-}
-
-variable "api_domain" {
-  description = "API domain for CORS configuration"
-  type        = string
   default     = "http://localhost:3001"
 }
+
 
 variable "cognito_password_policy" {
   description = "Password policy configuration for Cognito User Pool"

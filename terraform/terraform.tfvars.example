@@ -24,7 +24,7 @@ enable_provisioned_concurrency = false
 # Cognito Configuration (REQUIRED for user authentication)
 cognito_domain_prefix = "your-unique-domain-prefix"  # Must be globally unique
 frontend_domain       = "https://your-api-gateway-url/dev"
-api_domain           = "https://your-api-gateway-url/dev"
+
 enable_cognito_domain = true
 
 # Cognito Password Policy (optional)

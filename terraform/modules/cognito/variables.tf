@@ -17,7 +17,7 @@ variable "domain_prefix" {
 variable "frontend_domain" {
   description = "Frontend domain for callback URLs"
   type        = string
-  default     = "http://localhost:3000"
+  default     = "http://localhost:3001"
 }
 
 variable "stage_name" {
@@ -26,11 +26,7 @@ variable "stage_name" {
   default     = "dev"
 }
 
-variable "api_domain" {
-  description = "API domain for CORS"
-  type        = string
-  default     = "http://localhost:3001"
-}
+
 
 variable "password_policy" {
   description = "Password policy configuration"

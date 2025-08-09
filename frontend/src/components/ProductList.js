@@ -208,30 +208,32 @@ const ProductList = () => {
           </div>
 
           {/* Products grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {filteredProducts.map(product => (
-              <div key={product.id} className="card group hover:shadow-lg transition-shadow">
-                {/* Product Image */}
-                <div className="aspect-square overflow-hidden">
+              <div key={product.id} className="card group hover:shadow-md transition-all duration-200">
+                {/* Product Image - Much smaller and compact */}
+                <div className="aspect-[3/2] overflow-hidden bg-gray-50">
                   <img
                     src={product.image_url}
                     alt={product.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     onError={(e) => {
-                      e.target.src = 'https://via.placeholder.com/300x300?text=No+Image';
+                      e.target.src = 'https://via.placeholder.com/180x120?text=No+Image';
                     }}
                   />
                 </div>
 
-                {/* Product Info */}
-                <div className="p-4">
+                {/* Product Info - More compact */}
+                <div className="p-3">
+                  {/* Category Badge */}
                   <div className="mb-2">
-                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                    <span className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
                       {product.category}
                     </span>
                   </div>
 
-                  <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+                  {/* Product Title */}
+                  <h3 className="font-medium text-gray-900 mb-1 text-sm line-clamp-2 leading-tight">
                     <Link 
                       to={`/products/${product.id}`}
                       className="hover:text-blue-600 transition-colors"
@@ -240,52 +242,49 @@ const ProductList = () => {
                     </Link>
                   </h3>
 
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {product.description}
-                  </p>
-
+                  {/* Price and Stock - Simplified */}
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-lg font-bold text-gray-900">
+                    <span className="text-base font-bold text-gray-900">
                       {formatPrice(product.price)}
                     </span>
-                    <span className="text-sm text-gray-500">
-                      Stock: {product.stock}
+                    <span className="text-xs text-gray-500">
+                      {product.stock > 0 ? `${product.stock} left` : 'Out of stock'}
                     </span>
                   </div>
 
-                  {/* Action buttons */}
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/products/${product.id}`}
-                      className="btn btn-secondary flex-1 text-center"
-                    >
-                      View Details
-                    </Link>
-
-                    <button
-                      onClick={() => handleAddToCart(product.id)}
-                      disabled={product.stock === 0 || isInCart(product.id)}
-                      className={`btn flex items-center gap-1 ${
-                        isInCart(product.id)
-                          ? 'btn-secondary cursor-not-allowed'
-                          : 'btn-primary'
-                      }`}
-                      title={
-                        product.stock === 0
-                          ? 'Out of stock'
-                          : isInCart(product.id)
-                          ? `In cart (${getItemQuantity(product.id)})`
-                          : 'Add to cart'
-                      }
-                    >
-                      <ShoppingCart className="w-4 h-4" />
-                      {isInCart(product.id) 
-                        ? `${getItemQuantity(product.id)}` 
-                        : product.stock === 0 
-                        ? 'Out of Stock'
-                        : 'Add'
-                      }
-                    </button>
+                  {/* Single Action Button */}
+                  <div className="flex justify-center w-full">
+                    {isInCart(product.id) ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-green-600 font-medium">
+                          In Cart ({getItemQuantity(product.id)})
+                        </span>
+                        <Link
+                          to={`/products/${product.id}`}
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          View Details
+                        </Link>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleAddToCart(product.id)}
+                        disabled={product.stock === 0}
+                        className={`btn btn-sm ${
+                          product.stock === 0 
+                            ? 'btn-secondary cursor-not-allowed' 
+                            : 'btn-primary'
+                        }`}
+                        title={
+                          product.stock === 0
+                            ? 'Out of stock'
+                            : 'Add to cart'
+                        }
+                      >
+                        <ShoppingCart className="w-4 h-4 mr-1" />
+                        {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

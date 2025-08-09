@@ -80,7 +80,7 @@ module "cognito" {
   domain_prefix   = var.cognito_domain_prefix
   frontend_domain = var.frontend_domain
   stage_name      = var.environment
-  api_domain      = var.api_domain
+
   
   password_policy = var.cognito_password_policy
   mfa_configuration = var.cognito_mfa_configuration
@@ -288,14 +288,14 @@ resource "null_resource" "update_cognito_callbacks" {
   "CallbackURLs": [
     "$API_URL/",
     "$API_URL/auth/callback",
-    "http://localhost:3000/",
-    "http://localhost:3000/auth/callback"
+    "http://localhost:3001/",
+    "http://localhost:3001/auth/callback"
   ],
   "LogoutURLs": [
     "$API_URL/home",
     "$API_URL/",
-    "http://localhost:3000/home",
-    "http://localhost:3000/"
+    "http://localhost:3001/home",
+    "http://localhost:3001/"
   ]
 }
 JSON
