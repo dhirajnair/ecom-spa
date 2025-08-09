@@ -62,24 +62,41 @@ const Navigation = () => {
 
   const handleLogout = async () => {
     console.log('🚪 Starting logout process...');
+    console.log('🚪 Current location:', {
+      href: window.location.href,
+      pathname: window.location.pathname,
+      origin: window.location.origin
+    });
     
+    // If no OIDC user and no token, just go home (avoid Cognito /login bounce)
+    const hasOidcUser = !!auth?.user;
+    const hasLocalToken = !!localStorage.getItem('authToken');
+    if (!hasOidcUser && !hasLocalToken) {
+      console.log('🚪 No active session detected; skipping Cognito and going home');
+      localStorage.removeItem('demo_auth');
+      localStorage.removeItem('ecom_cart');
+      setIsAuthenticated(false);
+      setUser(null);
+      window.location.href = '/home';
+      return;
+    }
+
     // Clear all auth-related data first
     localStorage.removeItem('demo_auth');
     localStorage.removeItem('authToken');
     localStorage.removeItem('ecom_cart'); // Also clear cart on logout
     setIsAuthenticated(false);
     setUser(null);
-    
-    // For Cognito, use AWS pattern for logout
+    console.log('🚪 Current location:', {
+      href: window.location.href,
+      pathname: window.location.pathname,
+      origin: window.location.origin
+    });
+    // For Cognito, use server-side /logout route (centralized)
     if (cognitoConfig.useCognito && cognitoConfig.isConfigured() && isAuthAvailable) {
-      console.log('🚪 Using AWS Cognito logout pattern');
+      console.log('🚪 Using server-side /logout route (centralized)');
       
-      // AWS pattern: Manual logout URL construction
-      const clientId = cognitoConfig.userPoolWebClientId;
-      const redirectUri = `${window.location.origin}/dev/home`; // Redirect to home after logout
-      const cognitoDomain = `https://${cognitoConfig.domain}.auth.${cognitoConfig.region}.amazoncognito.com`;
-      
-      // Clear OIDC user storage first (following AWS pattern)
+      // Clear OIDC user storage first (non-blocking)
       if (auth && auth.removeUser) {
         try {
           await auth.removeUser();
@@ -89,10 +106,20 @@ const Navigation = () => {
         }
       }
       
-      const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-      console.log('🚪 Redirecting to Cognito logout:', logoutUrl);
-      console.log('🚪 Logout will redirect back to:', redirectUri);
-      window.location.href = logoutUrl;
+      // STAGE-AWARE: Build the correct /dev/logout URL
+      const currentPath = window.location.pathname; // e.g., "/dev/home"
+      const pathParts = currentPath.split('/').filter(Boolean); // ["dev", "home"]
+      const stage = pathParts[0] || 'dev'; // Extract stage
+      const stageLogoutUrl = `/${stage}/logout`; // "/dev/logout"
+      
+      console.log('🚪 Using stage-aware logout URL');
+      console.log('🚪 Stage detected:', stage, 'Logout URL:', stageLogoutUrl);
+      
+      // Alert for debugging
+      alert(`🚪 STAGE-AWARE!!!! LOGOUT:\nCurrent: ${currentPath}\nStage: ${stage}\nLogout URL: ${stageLogoutUrl}`);
+      
+      // Use stage-aware logout URL
+      window.location.href = stageLogoutUrl;
     } else {
       // Local logout - redirect to home
       console.log('🏠 Local logout - redirecting to home');

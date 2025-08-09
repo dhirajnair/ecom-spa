@@ -89,8 +89,7 @@ resource "aws_lambda_function" "product_service" {
   role         = aws_iam_role.lambda_execution_role.arn
   
   package_type = "Image"
-  # If image not yet pushed, allow a placeholder and update after push via apply
-  image_uri    = var.product_service_image_uri
+  image_uri    = replace(var.product_service_image_uri, ":latest", format(":%s", var.product_image_tag))
   
   memory_size = var.lambda_memory_size
   timeout     = var.lambda_timeout
@@ -139,7 +138,7 @@ resource "aws_lambda_function" "cart_service" {
   role         = aws_iam_role.lambda_execution_role.arn
   
   package_type = "Image"
-  image_uri    = var.cart_service_image_uri
+  image_uri    = replace(var.cart_service_image_uri, ":latest", format(":%s", var.cart_image_tag))
   
   memory_size = var.lambda_memory_size
   timeout     = var.lambda_timeout
@@ -191,7 +190,7 @@ resource "aws_lambda_function" "frontend" {
   role         = aws_iam_role.lambda_execution_role.arn
   
   package_type = "Image"
-  image_uri    = var.frontend_image_uri
+  image_uri    = replace(var.frontend_image_uri, ":latest", format(":%s", var.frontend_image_tag))
   
   memory_size = var.lambda_memory_size
   timeout     = var.lambda_timeout
@@ -200,6 +199,7 @@ resource "aws_lambda_function" "frontend" {
   environment {
     variables = {
       ENV                           = var.environment
+      STAGE                        = var.environment # For server.js logout route since API Gateway strips stage
       REACT_APP_USE_COGNITO_AUTH   = "true"
       REACT_APP_USER_POOL_ID       = var.cognito_user_pool_id
       REACT_APP_USER_POOL_WEB_CLIENT_ID = var.cognito_web_client_id

@@ -53,17 +53,44 @@ const ProductList = () => {
   // Fetch categories
   const {
     data: categoriesData,
-    isLoading: categoriesLoading
+    isLoading: categoriesLoading,
+    error: categoriesError
   } = useQuery(
     'categories',
-    () => api.products.getCategories(),
+    async () => {
+      console.log('🏷️ ProductList: Fetching categories...');
+      try {
+        const result = await api.products.getCategories();
+        console.log('✅ ProductList: Categories API response:', result);
+        return result;
+      } catch (error) {
+        console.error('❌ ProductList: Categories API error:', error);
+        console.error('❌ ProductList: Categories error details:', {
+          message: error.message,
+          status: error.response?.status,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL
+        });
+        throw error;
+      }
+    },
     {
       staleTime: 10 * 60 * 1000, // 10 minutes
+      retry: 3,
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     }
   );
 
   const products = productsData?.products || [];
   const categories = categoriesData?.categories || [];
+
+  // Debug categories data
+  console.log('🏷️ ProductList: Categories state:', {
+    categoriesData,
+    categories,
+    categoriesLoading,
+    categoriesError: categoriesError?.message
+  });
 
   // Filter products by search term
   const filteredProducts = products.filter(product =>
@@ -129,13 +156,25 @@ const ProductList = () => {
               className="input"
               disabled={categoriesLoading}
             >
-              <option value="">All Categories</option>
-              {categories.map(category => (
+              <option value="">
+                {categoriesLoading 
+                  ? 'Loading categories...' 
+                  : categoriesError 
+                  ? 'Failed to load categories' 
+                  : 'All Categories'
+                }
+              </option>
+              {!categoriesLoading && !categoriesError && categories.map(category => (
                 <option key={category} value={category}>
                   {category}
                 </option>
               ))}
             </select>
+            {categoriesError && (
+              <p className="text-xs text-red-500 mt-1">
+                Error loading categories: {categoriesError.message}
+              </p>
+            )}
           </div>
 
           {/* Filter Icon */}

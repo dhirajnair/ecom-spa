@@ -68,15 +68,8 @@ const cognitoConfig = {
   
   // Get logout URL (stage-aware)
   getLogoutUrl() {
-    if (!this.domain) {
-      return null;
-    }
-    const base = rc.REACT_APP_API_GATEWAY_URL || window.location.origin;
-    const redirectUri = encodeURIComponent(`${base.replace(/\/$/, '')}/dev/home`);
-    
-    return `https://${this.domain}.auth.${this.region}.amazoncognito.com/logout?` +
-           `client_id=${this.userPoolWebClientId}&` +
-           `redirect_uri=${redirectUri}`;
+    // Centralize logout at the server route
+    return '/logout';
   }
 };
 

@@ -79,6 +79,7 @@ module "cognito" {
   environment     = var.environment
   domain_prefix   = var.cognito_domain_prefix
   frontend_domain = var.frontend_domain
+  stage_name      = var.environment
   api_domain      = var.api_domain
   
   password_policy = var.cognito_password_policy
@@ -100,6 +101,10 @@ resource "null_resource" "build_and_push_images" {
     product_dockerfile_sha  = filesha1("${path.root}/../backend/product-service/Dockerfile")
     cart_dockerfile_sha     = filesha1("${path.root}/../backend/cart-service/Dockerfile")
     frontend_dockerfile_sha = filesha1("${path.root}/../frontend/Dockerfile")
+    # Rebuild when any source file changes (hash of all files)
+    product_src_sha  = sha1(join("", [for f in fileset("${path.root}/../backend", "product-service/**") : filesha1("${path.root}/../backend/${f}")]))
+    cart_src_sha     = sha1(join("", [for f in fileset("${path.root}/../backend", "cart-service/**") : filesha1("${path.root}/../backend/${f}")]))
+    frontend_src_sha = sha1(join("", [for f in fileset("${path.root}/../frontend", "**/*") : filesha1("${path.root}/../frontend/${f}")]))
     product_repo            = module.ecr.product_service_repository_url
     cart_repo               = module.ecr.cart_service_repository_url
     frontend_repo           = module.ecr.frontend_repository_url
@@ -115,35 +120,42 @@ resource "null_resource" "build_and_push_images" {
       REGION=${var.aws_region}
       aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 
-      # Build product-service (context: backend)
-      docker pull ${module.ecr.product_service_repository_url}:latest || true
+      # Compute unique tag from content hash so each change creates a new image
+      PROD_TAG=${sha1(join("", [for f in fileset("${path.root}/../backend", "product-service/**") : filesha1("${path.root}/../backend/${f}")]))}
+      CART_TAG=${sha1(join("", [for f in fileset("${path.root}/../backend", "cart-service/**") : filesha1("${path.root}/../backend/${f}")]))}
+      FE_TAG=${sha1(join("", [for f in fileset("${path.root}/../frontend", "**/*") : filesha1("${path.root}/../frontend/${f}")]))}
+
+      echo "Using tags: product=$PROD_TAG cart=$CART_TAG frontend=$FE_TAG"
+
+      # Build product-service (context: backend) - fresh build without cache
       docker build --platform linux/amd64 \
-        --build-arg BUILDKIT_INLINE_CACHE=1 \
-        --cache-from ${module.ecr.product_service_repository_url}:latest \
+        --no-cache \
         -f ${path.root}/../backend/product-service/Dockerfile \
         -t product-service ${path.root}/../backend
       docker tag product-service:latest ${module.ecr.product_service_repository_url}:latest
+      docker tag product-service:latest ${module.ecr.product_service_repository_url}:$PROD_TAG
       docker push ${module.ecr.product_service_repository_url}:latest
+      docker push ${module.ecr.product_service_repository_url}:$PROD_TAG
 
-      # Build cart-service (context: backend)
-      docker pull ${module.ecr.cart_service_repository_url}:latest || true
+      # Build cart-service (context: backend) - fresh build without cache
       docker build --platform linux/amd64 \
-        --build-arg BUILDKIT_INLINE_CACHE=1 \
-        --cache-from ${module.ecr.cart_service_repository_url}:latest \
+        --no-cache \
         -f ${path.root}/../backend/cart-service/Dockerfile \
         -t cart-service ${path.root}/../backend
       docker tag cart-service:latest ${module.ecr.cart_service_repository_url}:latest
+      docker tag cart-service:latest ${module.ecr.cart_service_repository_url}:$CART_TAG
       docker push ${module.ecr.cart_service_repository_url}:latest
+      docker push ${module.ecr.cart_service_repository_url}:$CART_TAG
 
-      # Build frontend (context: frontend)
-      docker pull ${module.ecr.frontend_repository_url}:latest || true
+      # Build frontend (context: frontend) - fresh build without cache
       docker build --platform linux/amd64 \
-        --build-arg BUILDKIT_INLINE_CACHE=1 \
-        --cache-from ${module.ecr.frontend_repository_url}:latest \
+        --no-cache \
         -f ${path.root}/../frontend/Dockerfile \
         -t frontend ${path.root}/../frontend
       docker tag frontend:latest ${module.ecr.frontend_repository_url}:latest
+      docker tag frontend:latest ${module.ecr.frontend_repository_url}:$FE_TAG
       docker push ${module.ecr.frontend_repository_url}:latest
+      docker push ${module.ecr.frontend_repository_url}:$FE_TAG
     EOT
   }
 
@@ -161,6 +173,10 @@ module "lambda" {
   product_service_image_uri  = "${module.ecr.product_service_repository_url}:latest"
   cart_service_image_uri     = "${module.ecr.cart_service_repository_url}:latest"
   frontend_image_uri         = "${module.ecr.frontend_repository_url}:latest"
+  # pass the unique content tags
+  product_image_tag          = sha1(join("", [for f in fileset("${path.root}/../backend", "product-service/**") : filesha1("${path.root}/../backend/${f}")]))
+  cart_image_tag             = sha1(join("", [for f in fileset("${path.root}/../backend", "cart-service/**") : filesha1("${path.root}/../backend/${f}")]))
+  frontend_image_tag         = sha1(join("", [for f in fileset("${path.root}/../frontend", "**/*") : filesha1("${path.root}/../frontend/${f}")]))
   
   # DynamoDB Configuration
   products_table_name        = module.dynamodb.products_table_name
@@ -182,6 +198,8 @@ module "lambda" {
   cognito_api_client_id    = module.cognito.api_client_id
   cognito_identity_pool_id = module.cognito.identity_pool_id
   cognito_user_pool_domain = module.cognito.user_pool_domain
+  
+
   
   depends_on = [
     null_resource.build_and_push_images,
@@ -230,6 +248,8 @@ resource "null_resource" "update_cognito_callbacks" {
     api_url       = module.api_gateway.api_url
     user_pool_id  = module.cognito.user_pool_id
     web_client_id = module.cognito.web_client_id
+    # Force re-run on any frontend code change
+    frontend_src_sha = sha1(join("", [for f in fileset("${path.root}/../frontend", "**/*") : filesha1("${path.root}/../frontend/${f}")]))
   }
 
   provisioner "local-exec" {
@@ -272,9 +292,10 @@ resource "null_resource" "update_cognito_callbacks" {
     "http://localhost:3000/auth/callback"
   ],
   "LogoutURLs": [
+    "$API_URL/home",
     "$API_URL/",
-    "http://localhost:3000/",
-    "http://localhost:3000/auth/logout"
+    "http://localhost:3000/home",
+    "http://localhost:3000/"
   ]
 }
 JSON
@@ -368,7 +389,7 @@ resource "null_resource" "update_lambda_env" {
 
       aws lambda update-function-configuration --region $REGION \
         --function-name "$FRONTEND_FN_NAME" \
-        --environment "Variables={REACT_APP_USE_COGNITO_AUTH=true,REACT_APP_USER_POOL_ID=$USER_POOL_ID,REACT_APP_USER_POOL_WEB_CLIENT_ID=$WEB_CLIENT_ID,REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID,REACT_APP_API_GATEWAY_URL=$API_URL,REACT_APP_AWS_REGION=${var.aws_region},REACT_APP_USER_POOL_DOMAIN=${module.cognito.user_pool_domain}}"
+        --environment "Variables={ENV=${var.environment},STAGE=${var.environment},REACT_APP_USE_COGNITO_AUTH=true,REACT_APP_USER_POOL_ID=$USER_POOL_ID,REACT_APP_USER_POOL_WEB_CLIENT_ID=$WEB_CLIENT_ID,REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID,REACT_APP_API_GATEWAY_URL=$API_URL,REACT_APP_AWS_REGION=${var.aws_region},REACT_APP_USER_POOL_DOMAIN=${module.cognito.user_pool_domain}}"
     EOT
   }
 
@@ -380,6 +401,10 @@ resource "null_resource" "update_lambda_env" {
     identity_pool      = module.cognito.identity_pool_id
     products_table     = module.dynamodb.products_table_name
     carts_table        = module.dynamodb.carts_table_name
+    # Force re-run on any code change
+    product_src_sha    = sha1(join("", [for f in fileset("${path.root}/../backend", "product-service/**") : filesha1("${path.root}/../backend/${f}")]))
+    cart_src_sha       = sha1(join("", [for f in fileset("${path.root}/../backend", "cart-service/**") : filesha1("${path.root}/../backend/${f}")]))
+    frontend_src_sha   = sha1(join("", [for f in fileset("${path.root}/../frontend", "**/*") : filesha1("${path.root}/../frontend/${f}")]))
   }
 
   depends_on = [

@@ -106,6 +106,12 @@ resource "aws_cognito_user_pool_domain" "main" {
 }
 
 # Cognito User Pool Client for Web App
+locals {
+  # Ensure we do not duplicate /{stage} in constructed URLs if frontend_domain already includes it
+  # Use Terraform replace() with a dynamic regex pattern
+  frontend_base = replace(var.frontend_domain, format("/%s/?$", var.stage_name), "")
+}
+
 resource "aws_cognito_user_pool_client" "web_client" {
   name         = "${var.project_name}-${var.environment}-web-client"
   user_pool_id = aws_cognito_user_pool.main.id
@@ -118,19 +124,28 @@ resource "aws_cognito_user_pool_client" "web_client" {
   allowed_oauth_flows                  = ["code", "implicit"]
   allowed_oauth_scopes                 = ["email", "openid", "profile", "aws.cognito.signin.user.admin"]
   
-  callback_urls = [
-    "${var.frontend_domain}/auth/callback",
-    "${var.frontend_domain}/",
-    "http://localhost:3000/auth/callback",
-    "http://localhost:3000/"
-  ]
+  callback_urls = concat(
+    [
+      "http://localhost:3000/auth/callback",
+      "http://localhost:3000/"
+    ],
+    var.frontend_domain == "http://localhost:3000" ? [] : [
+      "${local.frontend_base}/${var.stage_name}/auth/callback",
+      "${local.frontend_base}/${var.stage_name}/"
+    ]
+  )
   
-  logout_urls = [
-    "${var.frontend_domain}/auth/logout",
-    "${var.frontend_domain}/",
-    "http://localhost:3000/auth/logout",
-    "http://localhost:3000/"
-  ]
+  logout_urls = concat(
+    [
+      "http://localhost:3000/home",
+      "http://localhost:3000/auth/logout",
+      "http://localhost:3000/"
+    ],
+    var.frontend_domain == "http://localhost:3000" ? [] : [
+      "${local.frontend_base}/${var.stage_name}/home",
+      "${local.frontend_base}/${var.stage_name}/"
+    ]
+  )
 
   # Supported identity providers
   supported_identity_providers = ["COGNITO"]

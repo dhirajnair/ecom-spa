@@ -70,6 +70,13 @@ resource "aws_api_gateway_resource" "products_proxy" {
   path_part   = "{proxy+}"
 }
 
+# /api/categories resource (explicit route for categories)
+resource "aws_api_gateway_resource" "categories" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.api.id
+  path_part   = "categories"
+}
+
 # /api/cart resource (protected endpoints)
 resource "aws_api_gateway_resource" "cart" {
   rest_api_id = aws_api_gateway_rest_api.main.id
@@ -125,6 +132,14 @@ resource "aws_api_gateway_method" "products_proxy_any" {
   request_parameters = {
     "method.request.path.proxy" = true
   }
+}
+
+# GET /api/categories
+resource "aws_api_gateway_method" "categories_get" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.categories.id
+  http_method   = "GET"
+  authorization = "NONE"
 }
 
 # Methods for Cart (Protected - Cognito Auth Required)
@@ -201,6 +216,8 @@ resource "aws_api_gateway_method" "root_any" {
   authorization = "NONE"
 }
 
+
+
 # Frontend proxy resource (catch-all for SPA routes)
 resource "aws_api_gateway_resource" "frontend_proxy" {
   rest_api_id = aws_api_gateway_rest_api.main.id
@@ -236,6 +253,17 @@ resource "aws_api_gateway_integration" "products_proxy_any" {
   rest_api_id = aws_api_gateway_rest_api.main.id
   resource_id = aws_api_gateway_resource.products_proxy.id
   http_method = aws_api_gateway_method.products_proxy_any.http_method
+
+  type                    = "AWS_PROXY"
+  integration_http_method = "POST"
+  uri                     = var.product_service_invoke_arn
+}
+
+# Categories integration (to product service Lambda)
+resource "aws_api_gateway_integration" "categories_get" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.categories.id
+  http_method = aws_api_gateway_method.categories_get.http_method
 
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
@@ -330,6 +358,10 @@ resource "aws_api_gateway_integration" "frontend_proxy_any" {
   type                    = "AWS_PROXY"
   integration_http_method = "POST"
   uri                     = var.frontend_invoke_arn
+
+  request_parameters = {
+    "integration.request.path.proxy" = "method.request.path.proxy"
+  }
 }
 
 # CORS Method Responses

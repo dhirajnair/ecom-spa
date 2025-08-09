@@ -165,7 +165,6 @@ make clean      # Clean up containers and volumes
 **Key Endpoints:**
 - `GET /api/products` - List products with filtering
 - `GET /api/products/{id}` - Get product details
-- `GET /api/categories` - Get product categories
 - `GET /api/health` - Health check
 
 ### Cart Service (Port 8002)

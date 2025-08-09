@@ -8,6 +8,23 @@ const port = process.env.PORT || 8080;
 // Add request logging middleware first
 app.use((req, res, next) => {
   console.log(`📍 ${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
+  
+  // Special logging for logout requests
+  if (req.originalUrl.includes('logout')) {
+    console.log(`🚪🚪🚪 LOGOUT REQUEST DETECTED! 🚪🚪🚪`);
+    console.log(`🚪 Full URL details:`, {
+      originalUrl: req.originalUrl,
+      path: req.path,
+      url: req.url,
+      method: req.method,
+      headers: {
+        host: req.headers.host,
+        'user-agent': req.headers['user-agent'],
+        referer: req.headers.referer
+      }
+    });
+  }
+  
   next();
 });
 
@@ -55,6 +72,9 @@ app.get('/login', (req, res) => {
   return res.redirect(302, loginUrl);
 });
 
+
+
+
 // Friendly signup route → Cognito hosted UI signup
 app.get('/signup', (req, res) => {
   const cfg = {
@@ -69,18 +89,60 @@ app.get('/signup', (req, res) => {
   return res.redirect(302, url);
 });
 
+
+
+// API Gateway strips stage prefix, so /dev/logout becomes /logout
 app.get('/logout', (req, res) => {
-  const cfg = {
-    region: process.env.REACT_APP_AWS_REGION || process.env.AWS_REGION || 'ap-south-1',
-    domain: process.env.REACT_APP_USER_POOL_DOMAIN,
-    clientId: process.env.REACT_APP_USER_POOL_WEB_CLIENT_ID,
-    baseUrl: process.env.REACT_APP_API_GATEWAY_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers['x-forwarded-host'] || req.headers.host}`,
-  };
-  if (!cfg.domain || !cfg.clientId) return res.status(500).send('Cognito not configured');
-  const redirectUri = `${cfg.baseUrl.replace(/\/$/, '')}/dev/home`; // Redirect to home after logout
-  const url = `https://${cfg.domain}.auth.${cfg.region}.amazoncognito.com/logout?client_id=${encodeURIComponent(cfg.clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-  console.log(`🚪 Logout URL: ${url}`);
-  return res.redirect(302, url);
+  console.log('🚪🚪🚪 LOGOUT ROUTE HIT (API Gateway stripped stage) 🚪🚪🚪');
+  console.log(`🚪 Request details:`, {
+    originalUrl: req.originalUrl,
+    path: req.path,
+    method: req.method,
+    headers: {
+      host: req.headers.host,
+      'x-forwarded-host': req.headers['x-forwarded-host'],
+      'x-forwarded-proto': req.headers['x-forwarded-proto'],
+      'user-agent': req.headers['user-agent']
+    }
+  });
+
+  // Get stage from environment since API Gateway strips it from path
+  const stage = process.env.STAGE || 'dev';
+  console.log(`🚪 Using stage from environment: ${stage}`);
+
+  const region = process.env.REACT_APP_AWS_REGION || process.env.AWS_REGION || 'ap-south-1';
+  const domain = process.env.REACT_APP_USER_POOL_DOMAIN;
+  const clientId = process.env.REACT_APP_USER_POOL_WEB_CLIENT_ID;
+  // Always derive origin from request to avoid double-adding stage from env
+  const origin = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers['x-forwarded-host'] || req.headers.host}`;
+
+  console.log(`🚪 Environment check:`, {
+    region,
+    domain: domain ? `${domain.substring(0, 10)}...` : 'NOT_SET',
+    clientId: clientId ? `${clientId.substring(0, 10)}...` : 'NOT_SET',
+    origin
+  });
+
+  if (!domain || !clientId) {
+    console.log(`🚪 ❌ Cognito not configured - domain: ${!!domain}, clientId: ${!!clientId}`);
+    return res.status(500).send('Cognito not configured');
+  }
+
+  // Exact stage-aware return URL, no duplication
+  const returnUrl = `${origin.replace(/\/$/, '')}/${stage}/home`;
+  const cognitoBase = `https://${domain}.auth.${region}.amazoncognito.com`;
+  // Use ONLY logout_uri for Hosted UI logout
+  const logoutUrl = `${cognitoBase}/logout?client_id=${encodeURIComponent(clientId)}&logout_uri=${encodeURIComponent(returnUrl)}`;
+  
+  console.log(`🚪 ✅ Logout redirect details:`, {
+    stage,
+    returnUrl,
+    cognitoBase,
+    logoutUrl: logoutUrl.length > 100 ? `${logoutUrl.substring(0, 100)}...` : logoutUrl
+  });
+  
+  console.log(`🚪 🔄 Redirecting to Cognito logout...`);
+  return res.redirect(302, logoutUrl);
 });
 
 // Handle stage-specific static assets first (e.g., /dev/static/...)
@@ -187,11 +249,17 @@ app.get('/', (_req, res) => {
 
 // Handle both /:stage and /:stage/* patterns
 app.get('/:stage/*?', (req, res, next) => {
-  console.log(`🎯 Stage route hit: ${req.originalUrl} -> stage: ${req.params.stage}`);
+  console.log(`🎯🎯🎯 STAGE ROUTE HIT: ${req.originalUrl} -> stage: ${req.params.stage}, wildcard: ${req.params[0] || 'none'}`);
   
   // Skip if it's an API route or special route
   if (['login', 'logout', 'auth', 'runtime-config.js', 'health'].includes(req.params.stage)) {
-    console.log(`🎯 Skipping special route: ${req.params.stage}`);
+    console.log(`🎯 ⏭️ Skipping special route: ${req.params.stage}`);
+    return next();
+  }
+  
+  // Skip if the path contains logout (e.g., /dev/logout should be handled by /:stage/logout route)
+  if (req.originalUrl.includes('/logout')) {
+    console.log(`🎯 ⏭️ SKIPPING LOGOUT ROUTE: ${req.originalUrl} - passing to logout handler`);
     return next();
   }
   

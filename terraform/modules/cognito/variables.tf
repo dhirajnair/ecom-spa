@@ -20,6 +20,12 @@ variable "frontend_domain" {
   default     = "http://localhost:3000"
 }
 
+variable "stage_name" {
+  description = "API Gateway stage name used in Hosted UI URLs (e.g., dev, prod)"
+  type        = string
+  default     = "dev"
+}
+
 variable "api_domain" {
   description = "API domain for CORS"
   type        = string

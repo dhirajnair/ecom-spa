@@ -25,6 +25,25 @@ variable "frontend_image_uri" {
   type        = string
 }
 
+# Optional tags to pin images to unique content hashes
+variable "product_image_tag" {
+  description = "Tag for product image"
+  type        = string
+  default     = "latest"
+}
+
+variable "cart_image_tag" {
+  description = "Tag for cart image"
+  type        = string
+  default     = "latest"
+}
+
+variable "frontend_image_tag" {
+  description = "Tag for frontend image"
+  type        = string
+  default     = "latest"
+}
+
 variable "lambda_memory_size" {
   description = "Memory size for Lambda functions"
   type        = number
@@ -96,6 +115,8 @@ variable "cognito_user_pool_domain" {
   type        = string
   default     = null
 }
+
+
 
 # VPC Configuration (optional for Lambda)
 variable "vpc_id" {
