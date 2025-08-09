@@ -71,7 +71,7 @@ const ProductDetail = () => {
           showRetry={false}
         />
         <div className="text-center mt-4">
-          <Link to="/" className="btn btn-primary">
+          <Link to="/home" className="btn btn-primary">
             Back to Products
           </Link>
         </div>

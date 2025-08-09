@@ -93,7 +93,7 @@ const Cart = () => {
           <p className="text-gray-600 mb-6">
             Looks like you haven't added any products to your cart yet.
           </p>
-          <Link to="/" className="btn btn-primary">
+          <Link to="/home" className="btn btn-primary">
             Continue Shopping
           </Link>
         </div>
@@ -146,7 +146,7 @@ const Cart = () => {
               </button>
 
               <Link 
-                to="/" 
+                to="/home" 
                 className="btn btn-secondary w-full text-center"
               >
                 Continue Shopping

@@ -77,8 +77,8 @@ app.get('/logout', (req, res) => {
     baseUrl: process.env.REACT_APP_API_GATEWAY_URL || `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers['x-forwarded-host'] || req.headers.host}`,
   };
   if (!cfg.domain || !cfg.clientId) return res.status(500).send('Cognito not configured');
-  const redirectUri = cfg.baseUrl.replace(/\/$/, '');
-  const url = `https://${cfg.domain}.auth.${cfg.region}.amazoncognito.com/logout?client_id=${encodeURIComponent(cfg.clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+  const redirectUri = `${cfg.baseUrl.replace(/\/$/, '')}/dev/home`; // Redirect to home after logout
+  const url = `https://${cfg.domain}.auth.${cfg.region}.amazoncognito.com/logout?client_id=${encodeURIComponent(cfg.clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}`;
   console.log(`🚪 Logout URL: ${url}`);
   return res.redirect(302, url);
 });
@@ -185,7 +185,8 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
 });
 
-app.get('/:stage', (req, res, next) => {
+// Handle both /:stage and /:stage/* patterns
+app.get('/:stage/*?', (req, res, next) => {
   console.log(`🎯 Stage route hit: ${req.originalUrl} -> stage: ${req.params.stage}`);
   
   // Skip if it's an API route or special route
@@ -203,7 +204,7 @@ app.get('/:stage', (req, res, next) => {
   // If it looks like a stage name (simple alphanumeric), serve the SPA with stage-aware rewriting
   if (/^[A-Za-z0-9_-]+$/.test(req.params.stage)) {
     const stage = `/${req.params.stage}/`;
-    console.log(`🎯 Serving SPA for stage: ${stage}`);
+    console.log(`🎯 Serving SPA for stage: ${stage} (full path: ${req.originalUrl})`);
     console.log(`🎯 rawIndexHtml available: ${!!rawIndexHtml}`);
     
     let html = rawIndexHtml;

@@ -68,9 +68,9 @@ const AuthCallback = () => {
       // Check if this is a new user (signup) vs returning user (login)
       const isNewUser = auth.user.profile?.email_verified === false || 
                         (auth.user.profile?.['custom:isNewUser'] === 'true');
-      
-      toast.success(isNewUser ? 'Account created and signed in successfully!' : 'Successfully signed in!');
-      navigate('/', { replace: true });
+                   
+             toast.success(isNewUser ? 'Account created and signed in successfully!' : 'Successfully signed in!');
+             navigate('/home', { replace: true });
       return;
     }
 

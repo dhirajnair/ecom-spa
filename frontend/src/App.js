@@ -21,9 +21,10 @@ function App() {
           <main>
             <Routes>
               {/* Root: Show product dashboard (public) */}
-                                   <Route path="/" element={<ProductList />} />
-                     <Route path="/products/:productId" element={<ProductDetail />} />
-                     <Route path="/login" element={<Login />} />
+              <Route path="/" element={<ProductList />} />
+              <Route path="/home" element={<ProductList />} />
+              <Route path="/products/:productId" element={<ProductDetail />} />
+              <Route path="/login" element={<Login />} />
               
               {/* Auth callback - only if using Cognito */}
               {cognitoConfig.useCognito && cognitoConfig.isConfigured() && (
@@ -47,7 +48,7 @@ function App() {
                   <div className="container mx-auto px-4 py-8 text-center">
                     <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
                     <p className="text-gray-600 mb-6">Page not found</p>
-                    <a href="/" className="btn btn-primary">
+                    <a href="/home" className="btn btn-primary">
                       Go Home
                     </a>
                   </div>

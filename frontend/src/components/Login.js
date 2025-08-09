@@ -228,7 +228,7 @@ const Login = () => {
             
             <div className="border-t border-gray-200 pt-4">
               <Link
-                to="/"
+                to="/home"
                 className="text-sm text-gray-600 hover:text-gray-900"
               >
                 ← Back to Products

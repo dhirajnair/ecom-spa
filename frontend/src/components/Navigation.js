@@ -62,8 +62,6 @@ const Navigation = () => {
 
   const handleLogout = async () => {
     console.log('🚪 Starting logout process...');
-    console.log('isAuthAvailable:', isAuthAvailable);
-    console.log('auth.signoutRedirect available:', !!auth?.signoutRedirect);
     
     // Clear all auth-related data first
     localStorage.removeItem('demo_auth');
@@ -72,19 +70,33 @@ const Navigation = () => {
     setIsAuthenticated(false);
     setUser(null);
     
-    // For Cognito, use manual logout URL (more reliable than OIDC signoutRedirect)
-    if (cognitoConfig.useCognito && cognitoConfig.isConfigured()) {
-      console.log('🚪 Using Cognito logout URL');
-      const logoutUrl = cognitoConfig.getLogoutUrl();
-      if (logoutUrl) {
-        window.location.href = logoutUrl;
-      } else {
-        window.location.href = '/';
+    // For Cognito, use AWS pattern for logout
+    if (cognitoConfig.useCognito && cognitoConfig.isConfigured() && isAuthAvailable) {
+      console.log('🚪 Using AWS Cognito logout pattern');
+      
+      // AWS pattern: Manual logout URL construction
+      const clientId = cognitoConfig.userPoolWebClientId;
+      const redirectUri = `${window.location.origin}/dev/home`; // Redirect to home after logout
+      const cognitoDomain = `https://${cognitoConfig.domain}.auth.${cognitoConfig.region}.amazoncognito.com`;
+      
+      // Clear OIDC user storage first (following AWS pattern)
+      if (auth && auth.removeUser) {
+        try {
+          await auth.removeUser();
+          console.log('🚪 OIDC user removed from storage');
+        } catch (error) {
+          console.warn('🚪 Failed to remove OIDC user:', error);
+        }
       }
+      
+      const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      console.log('🚪 Redirecting to Cognito logout:', logoutUrl);
+      console.log('🚪 Logout will redirect back to:', redirectUri);
+      window.location.href = logoutUrl;
     } else {
-      // Local logout - refresh the page to reset app state
+      // Local logout - redirect to home
       console.log('🏠 Local logout - redirecting to home');
-      window.location.href = '/';
+      window.location.href = '/home';
     }
   };
 
@@ -104,17 +116,17 @@ const Navigation = () => {
 
           {/* Navigation Links */}
           <div className="flex items-center gap-6">
-            <Link
-              to="/"
-              className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                isActive('/') 
-                  ? 'bg-blue-100 text-blue-700' 
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              <Home className="w-4 h-4" />
-              Home
-            </Link>
+                               <Link
+                     to="/home"
+                     className={`flex items-center gap-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                       isActive('/home') || isActive('/') 
+                         ? 'bg-blue-100 text-blue-700' 
+                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                     }`}
+                   >
+                     <Home className="w-4 h-4" />
+                     Home
+                   </Link>
 
             {/* Cart Link - Always visible */}
             <Link
