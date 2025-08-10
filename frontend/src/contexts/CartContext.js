@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
+import { api } from '../services/api';
 
 // Cart state
 const initialState = {
@@ -150,26 +151,31 @@ export const CartProvider = ({ children }) => {
     }
   }, []);
 
-  // Add item to cart (local storage only for now)
+  // Add item to cart with real product data
   const addToCart = useCallback(async (productId, quantity = 1) => {
     dispatch({ type: cartActions.SET_LOADING, payload: true });
     
     try {
-      // For demo purposes, we'll create a mock product item
-      // In a real app, you'd fetch the product details from the API
-      const mockProduct = {
+      // Fetch actual product details from the API
+      const product = await api.products.getById(productId);
+      
+      const cartItem = {
         product_id: productId,
-        name: `Product ${productId}`,
-        price: 29.99,
+        name: product.name,
+        description: product.description,
+        price: product.price,
+        image_url: product.image_url,
+        category: product.category,
+        stock: product.stock,
         quantity: quantity
       };
       
       dispatch({ 
         type: cartActions.ADD_ITEM, 
-        payload: mockProduct
+        payload: cartItem
       });
       
-      toast.success(`Added item to cart`);
+      toast.success(`Added ${product.name} to cart`);
     } catch (error) {
       console.error('Error adding to cart:', error);
       dispatch({

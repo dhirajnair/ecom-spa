@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Trash2, Plus, Minus, ArrowRight } from 'lucide-react';
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, Package } from 'lucide-react';
 import { useCart } from '../contexts/CartContext';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
@@ -67,163 +67,252 @@ const Cart = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-blue-200 shadow-lg mb-8 rounded-2xl">
-        <div className="container mx-auto px-6 py-12">
-          <div className="flex items-center justify-between">
-            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
-              Shopping Cart
-            </h1>
-            {items.length > 0 && (
-              <button
-                onClick={handleClearCart}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
-              >
-                Clear Cart
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {items.length === 0 ? (
-        /* Empty Cart */
-        <div className="text-center py-12">
-          <div className="bg-gray-100 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-            <ShoppingCart className="w-12 h-12 text-gray-400" />
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
-            Your cart is empty
-          </h3>
-          <p className="text-gray-600 mb-6">
-            Looks like you haven't added any products to your cart yet.
-          </p>
-          <Link to="/home" className="btn btn-primary">
-            Continue Shopping
-          </Link>
-        </div>
-      ) : (
-        /* Cart with Items */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="lg:col-span-2">
-            <div className="space-y-4">
-              {items.map(item => (
-                <CartItem
-                  key={item.id}
-                  item={item}
-                  onIncrease={handleIncreaseQuantity}
-                  onDecrease={handleDecreaseQuantity}
-                  onRemove={handleRemoveItem}
-                  formatPrice={formatPrice}
-                />
-              ))}
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 to-primary-50">
+      <div className="container mx-auto py-8">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 via-blue-700 to-teal-600 shadow-lg mb-8">
+          <div className="container mx-auto px-6 py-12">
+            <div className="flex items-center justify-between">
+              <div className="text-center flex-1">
+                <h1 className="text-5xl font-bold text-white mb-2 tracking-tight">
+                  Shopping Cart
+                </h1>
+                <p className="text-xl text-blue-100">
+                  {items.length > 0 ? `${items.reduce((sum, item) => sum + item.quantity, 0)} items in your cart` : 'Your shopping destination'}
+                </p>
+              </div>
+              {items.length > 0 && (
+                <button
+                  onClick={handleClearCart}
+                  className="bg-red-500 hover:bg-red-600 text-white font-semibold px-6 py-3 rounded-full transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+                >
+                  Clear Cart
+                </button>
+              )}
             </div>
           </div>
+        </div>
 
-          {/* Cart Summary */}
-          <div className="lg:col-span-1">
-            <div className="card p-6 sticky top-4">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Order Summary
+        {items.length === 0 ? (
+          /* Empty Cart */
+          <div className="text-center py-16">
+            <div className="card-elevated p-12 max-w-md mx-auto">
+              <div className="w-32 h-32 bg-gradient-to-br from-neutral-100 to-primary-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                <ShoppingCart className="w-16 h-16 text-neutral-400" />
+              </div>
+              <h3 className="text-3xl font-bold text-neutral-900 mb-4">
+                Your cart is empty
               </h3>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-gray-600">
-                  <span>Items ({items.reduce((sum, item) => sum + item.quantity, 0)})</span>
-                  <span>{formatPrice(total)}</span>
+              <p className="text-neutral-600 mb-8 text-lg leading-relaxed">
+                Discover amazing products and start building your perfect order
+              </p>
+              <Link to="/home" className="btn btn-primary btn-xl shadow-xl">
+                Start Shopping
+              </Link>
+            </div>
+          </div>
+        ) : (
+          /* Cart with Items */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Cart Items */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-neutral-900">Cart Items</h2>
+                <span className="text-neutral-600 bg-neutral-100 px-4 py-2 rounded-full font-semibold">
+                  {items.length} {items.length === 1 ? 'item' : 'items'}
+                </span>
+              </div>
+              <div className="space-y-4">
+                {items.map(item => (
+                  <CartItem
+                    key={item.id}
+                    item={item}
+                    onIncrease={handleIncreaseQuantity}
+                    onDecrease={handleDecreaseQuantity}
+                    onRemove={handleRemoveItem}
+                    formatPrice={formatPrice}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Cart Summary */}
+            <div className="lg:col-span-1">
+              <div className="card-elevated p-8 sticky top-8">
+                <h3 className="text-2xl font-bold text-neutral-900 mb-6 flex items-center gap-3">
+                  <div className="w-3 h-8 bg-gradient-primary rounded-full"></div>
+                  Order Summary
+                </h3>
+                
+                <div className="space-y-4 mb-8">
+                  <div className="flex justify-between text-neutral-600 text-lg">
+                    <span>Subtotal ({items.reduce((sum, item) => sum + item.quantity, 0)} items)</span>
+                    <span className="font-semibold">{formatPrice(total)}</span>
+                  </div>
+                  <div className="flex justify-between text-neutral-600 text-lg">
+                    <span>Shipping</span>
+                    <span className="font-semibold text-accent-600">Free</span>
+                  </div>
+                  <div className="flex justify-between text-neutral-600 text-lg">
+                    <span>Tax</span>
+                    <span className="font-semibold">{formatPrice(total * 0.08)}</span>
+                  </div>
+                  <div className="border-t-2 border-neutral-200 pt-4">
+                    <div className="flex justify-between text-2xl font-bold text-neutral-900">
+                      <span>Total</span>
+                      <span className="text-primary-600">{formatPrice(total * 1.08)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>Shipping</span>
-                  <span>Free</span>
+
+                <div className="space-y-4">
+                  <button className="btn btn-primary btn-xl w-full flex items-center justify-center gap-3 shadow-xl">
+                    Proceed to Checkout
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+
+                  <Link 
+                    to="/home" 
+                    className="btn btn-secondary btn-lg w-full text-center"
+                  >
+                    Continue Shopping
+                  </Link>
                 </div>
-                <div className="border-t pt-3">
-                  <div className="flex justify-between text-lg font-semibold text-gray-900">
-                    <span>Total</span>
-                    <span>{formatPrice(total)}</span>
+
+                {/* Trust Indicators */}
+                <div className="mt-8 pt-6 border-t border-neutral-200">
+                  <h4 className="font-bold text-neutral-900 mb-4">Why shop with us?</h4>
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-accent-100 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-accent-600 rounded-full"></div>
+                      </div>
+                      <span className="text-neutral-600">Free shipping on all orders</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-accent-100 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-accent-600 rounded-full"></div>
+                      </div>
+                      <span className="text-neutral-600">30-day money back guarantee</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-accent-100 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-accent-600 rounded-full"></div>
+                      </div>
+                      <span className="text-neutral-600">Secure SSL checkout</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="w-6 h-6 bg-accent-100 rounded-full flex items-center justify-center">
+                        <div className="w-2 h-2 bg-accent-600 rounded-full"></div>
+                      </div>
+                      <span className="text-neutral-600">24/7 customer support</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Security Badges */}
+                <div className="mt-6 pt-6 border-t border-neutral-200">
+                  <div className="flex items-center justify-center gap-4 opacity-60">
+                    <div className="text-xs text-neutral-500 font-semibold">🔒 SSL SECURE</div>
+                    <div className="text-xs text-neutral-500 font-semibold">💳 PAYMENTS</div>
+                    <div className="text-xs text-neutral-500 font-semibold">✅ VERIFIED</div>
                   </div>
                 </div>
               </div>
-
-              <button className="btn btn-primary w-full mb-4 flex items-center justify-center gap-2">
-                Proceed to Checkout
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <Link 
-                to="/home" 
-                className="btn btn-secondary w-full text-center"
-              >
-                Continue Shopping
-              </Link>
-
-              {/* Additional Info */}
-              <div className="mt-6 text-sm text-gray-600">
-                <p className="mb-2">✓ Free shipping on all orders</p>
-                <p className="mb-2">✓ 30-day return policy</p>
-                <p>✓ Secure checkout</p>
-              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
 
-// Cart Item Component
+// Enhanced Cart Item Component
 const CartItem = ({ item, onIncrease, onDecrease, onRemove, formatPrice }) => {
   const itemTotal = item.price * item.quantity;
 
   return (
-    <div className="card p-4">
-      <div className="flex items-center gap-4">
+    <div className="card-elevated p-6 group hover:shadow-2xl transition-all duration-300">
+      <div className="flex items-center gap-6">
+        {/* Product Image */}
+        <div className="w-24 h-24 bg-gradient-to-br from-neutral-100 to-primary-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform duration-300 overflow-hidden">
+          {item.image_url ? (
+            <img 
+              src={item.image_url} 
+              alt={item.name || `Product ${item.product_id}`}
+              className="w-full h-full object-cover rounded-xl"
+              onError={(e) => {
+                // Fallback to icon if image fails to load
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className="w-full h-full flex items-center justify-center" style={{ display: item.image_url ? 'none' : 'flex' }}>
+            <Package className="w-12 h-12 text-neutral-400" />
+          </div>
+        </div>
+
         {/* Product Info */}
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 mb-1">
-            Product #{item.product_id}
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-neutral-900 mb-1 text-lg group-hover:text-primary-600 transition-colors">
+            {item.name || `Product ${item.product_id}`}
           </h4>
-          <p className="text-gray-600 text-sm mb-2">
-            {formatPrice(item.price)} each
+          <p className="text-neutral-600 mb-2">
+            <span className="font-semibold">{formatPrice(item.price)}</span> each
           </p>
+          {item.category && (
+            <div className="flex items-center gap-2 text-sm text-neutral-500 mb-1">
+              <div className="w-2 h-2 bg-accent-500 rounded-full"></div>
+              <span>{item.category}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-2 text-sm text-neutral-500">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span>In Stock • Fast Shipping</span>
+          </div>
         </div>
 
         {/* Quantity Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onDecrease(item)}
-            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="w-10 h-10 rounded-xl border-2 border-neutral-200 flex items-center justify-center hover:border-primary-300 hover:bg-primary-50 transition-all duration-200 transform hover:scale-105"
           >
-            <Minus className="w-4 h-4" />
+            <Minus className="w-4 h-4 text-neutral-600" />
           </button>
           
-          <span className="w-12 text-center font-medium">
-            {item.quantity}
-          </span>
+          <div className="w-16 h-10 bg-neutral-50 border-2 border-neutral-200 rounded-xl flex items-center justify-center mx-1">
+            <span className="font-bold text-neutral-900">
+              {item.quantity}
+            </span>
+          </div>
           
           <button
             onClick={() => onIncrease(item.product_id)}
-            className="w-8 h-8 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-50 transition-colors"
+            className="w-10 h-10 rounded-xl border-2 border-neutral-200 flex items-center justify-center hover:border-primary-300 hover:bg-primary-50 transition-all duration-200 transform hover:scale-105"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-neutral-600" />
           </button>
         </div>
 
         {/* Item Total */}
-        <div className="w-24 text-right">
-          <span className="font-semibold text-gray-900">
+        <div className="text-right min-w-0">
+          <div className="text-2xl font-bold text-neutral-900 mb-1">
             {formatPrice(itemTotal)}
-          </span>
+          </div>
+          <div className="text-sm text-neutral-500">
+            Total
+          </div>
         </div>
 
         {/* Remove Button */}
         <button
           onClick={() => onRemove(item.product_id)}
-          className="p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+          className="w-10 h-10 text-error-500 hover:bg-error-50 rounded-xl transition-all duration-200 transform hover:scale-105 flex items-center justify-center border-2 border-transparent hover:border-error-200"
           title="Remove item"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="w-5 h-5" />
         </button>
       </div>
     </div>

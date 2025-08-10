@@ -15,6 +15,7 @@
   - [Local Development Authentication](#local-development-authentication)
   - [AWS Production Authentication](#aws-production-authentication) 
 - [Terraform Infrastructure Template](#terraform-infrastructure-template)
+- [Future Improvements](#future-improvements)
 
 ## Architecture and Design Choices
 
@@ -413,3 +414,39 @@ terraform/
 - Cognito password policies
 
 This Terraform template eliminates manual AWS console configuration and ensures reproducible, scalable deployments across multiple environments.
+
+## Future Improvements
+
+The following architectural enhancements are recommended for production scalability, cost optimization, and operational excellence:
+
+### 1. CloudFront/S3 for SPA Static Assets
+**Current State**: Frontend React SPA served via Lambda container with stage-aware routing  
+**Improvement**: Migrate to CloudFront + S3 for static asset delivery  
+**Business Impact**: 60-80% cost reduction for static assets, global CDN performance, reduced Lambda cold starts  
+**Technical Benefits**: Separate static assets from dynamic API routing, improved SEO, better caching strategies
+
+### 2. Remote Terraform State Management  
+**Current State**: Local Terraform state files (commented S3 backend configuration exists)  
+**Improvement**: Implement S3 + DynamoDB backend for state locking and team collaboration  
+**Business Impact**: Enables safe multi-developer infrastructure changes, disaster recovery, audit trails  
+**Technical Benefits**: State locking prevents concurrent modifications, centralized state for CI/CD pipelines
+
+### 3. Service-to-Service Authentication
+**Current State**: User-facing Cognito auth only; no inter-service authentication  
+**Improvement**: Implement service-to-service Cognito authentication using client credentials flow  
+**Business Impact**: Enhanced security posture, compliance readiness, audit capabilities  
+**Technical Benefits**: Zero-trust architecture, centralized service identity management, fine-grained access control
+
+### 4. Monitoring and Observability Stack
+**Current State**: Basic AWS Lambda/API Gateway logs  
+**Improvement**: Implement comprehensive monitoring with CloudWatch/X-Ray distributed tracing  
+**Business Impact**: Reduced MTTR, proactive issue detection, improved customer experience  
+**Technical Benefits**: End-to-end request tracing, performance bottleneck identification, automated alerting
+
+### 5. Multi-Environment CI/CD Pipeline
+**Current State**: Manual Terraform deployment  
+**Improvement**: GitOps-based pipeline with automated testing and progressive deployments  
+**Business Impact**: Faster feature delivery, reduced deployment risks, improved developer productivity  
+**Technical Benefits**: Automated quality gates, rollback capabilities, environment parity
+
+These improvements follow cloud-native best practices and address scalability, security, and operational concerns for enterprise production environments.
