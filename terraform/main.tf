@@ -127,9 +127,8 @@ resource "null_resource" "build_and_push_images" {
 
       echo "Using tags: product=$PROD_TAG cart=$CART_TAG frontend=$FE_TAG"
 
-      # Build product-service (context: backend) - fresh build without cache
+      # Build product-service (context: backend) - with layer caching
       docker build --platform linux/amd64 \
-        --no-cache \
         -f ${path.root}/../backend/product-service/Dockerfile \
         -t product-service ${path.root}/../backend
       docker tag product-service:latest ${module.ecr.product_service_repository_url}:latest
@@ -137,9 +136,8 @@ resource "null_resource" "build_and_push_images" {
       docker push ${module.ecr.product_service_repository_url}:latest
       docker push ${module.ecr.product_service_repository_url}:$PROD_TAG
 
-      # Build cart-service (context: backend) - fresh build without cache
+      # Build cart-service (context: backend) - with layer caching
       docker build --platform linux/amd64 \
-        --no-cache \
         -f ${path.root}/../backend/cart-service/Dockerfile \
         -t cart-service ${path.root}/../backend
       docker tag cart-service:latest ${module.ecr.cart_service_repository_url}:latest
@@ -147,9 +145,8 @@ resource "null_resource" "build_and_push_images" {
       docker push ${module.ecr.cart_service_repository_url}:latest
       docker push ${module.ecr.cart_service_repository_url}:$CART_TAG
 
-      # Build frontend (context: frontend) - fresh build without cache
+      # Build frontend (context: frontend) - with layer caching
       docker build --platform linux/amd64 \
-        --no-cache \
         -f ${path.root}/../frontend/Dockerfile \
         -t frontend ${path.root}/../frontend
       docker tag frontend:latest ${module.ecr.frontend_repository_url}:latest
@@ -314,51 +311,8 @@ JSON
   ]
 }
 
-# Post-apply: seed DynamoDB products table if empty (idempotent)
-resource "null_resource" "seed_dynamodb_products" {
-  triggers = {
-    region          = var.aws_region
-    products_table  = module.dynamodb.products_table_name
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-lc"]
-    command = <<-EOT
-      set -euo pipefail
-      REGION=${var.aws_region}
-      TABLE=${module.dynamodb.products_table_name}
-      # Check if table is empty (Count == 0)
-      COUNT=$(aws dynamodb scan --region "$REGION" --table-name "$TABLE" --select COUNT --query 'Count' --output text || echo 0)
-      if [ "$$COUNT" != "0" ]; then
-        echo "Products table '$TABLE' already has data (Count=$$COUNT), skipping seed."
-        exit 0
-      fi
-
-      TMP_JSON=$(mktemp)
-      cat > "$TMP_JSON" <<'JSON'
-{
-  "RequestItems": {
-    "TABLE_PLACEHOLDER": [
-      {"PutRequest":{"Item":{"id":{"S":"1"},"name":{"S":"Wireless Headphones"},"description":{"S":"High-quality wireless headphones with noise cancellation"},"price":{"N":"199.99"},"category":{"S":"Electronics"},"image_url":{"S":"https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500"},"stock":{"N":"50"}}}},
-      {"PutRequest":{"Item":{"id":{"S":"2"},"name":{"S":"Running Shoes"},"description":{"S":"Comfortable running shoes for daily exercise"},"price":{"N":"89.99"},"category":{"S":"Sports"},"image_url":{"S":"https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500"},"stock":{"N":"30"}}}},
-      {"PutRequest":{"Item":{"id":{"S":"3"},"name":{"S":"Coffee Maker"},"description":{"S":"Automatic coffee maker for perfect morning coffee"},"price":{"N":"149.99"},"category":{"S":"Home"},"image_url":{"S":"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500"},"stock":{"N":"25"}}}},
-      {"PutRequest":{"Item":{"id":{"S":"4"},"name":{"S":"Smartphone"},"description":{"S":"Latest smartphone with advanced camera system"},"price":{"N":"699.99"},"category":{"S":"Electronics"},"image_url":{"S":"https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500"},"stock":{"N":"40"}}}},
-      {"PutRequest":{"Item":{"id":{"S":"5"},"name":{"S":"Book - Python Programming"},"description":{"S":"Complete guide to Python programming for beginners"},"price":{"N":"39.99"},"category":{"S":"Books"},"image_url":{"S":"https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=500"},"stock":{"N":"100"}}}}
-    ]
-  }
-}
-JSON
-      sed -i.bak "s/TABLE_PLACEHOLDER/$TABLE/g" "$TMP_JSON"
-      aws dynamodb batch-write-item --region "$REGION" --request-items file://"$TMP_JSON"
-      rm -f "$TMP_JSON" "$TMP_JSON.bak"
-      echo "Seeded sample products into '$TABLE'"
-    EOT
-  }
-
-  depends_on = [
-    module.dynamodb
-  ]
-}
+# Note: DynamoDB seeding is now handled via make commands
+# Run 'make seed-aws' after terraform apply to populate the tables
 
 # Post-create step: update Lambda env vars (from Terraform outputs) as the last step
 resource "null_resource" "update_lambda_env" {

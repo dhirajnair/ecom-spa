@@ -35,14 +35,6 @@ app.add_middleware(
 app.include_router(router, prefix="/api")
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database on startup"""
-    logger.info("Starting Cart Service...")
-    create_tables()
-    logger.info("Cart Service started successfully!")
-
-
 @app.get("/")
 async def root():
     """Root endpoint"""

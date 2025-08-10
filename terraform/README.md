@@ -56,13 +56,17 @@ terraform output ecr_repositories
 terraform output -json deployment_info
 ```
 
-### 5) Seed DynamoDB (optional, via Terraform)
-Idempotent seed for the products table using a targeted apply.
+### 5) Seed DynamoDB (via Make command)
+After Terraform deployment, seed the DynamoDB tables using make commands:
 ```bash
-terraform apply -target=null_resource.seed_dynamodb_products -auto-approve
-# To force re-seed later:
-# terraform taint null_resource.seed_dynamodb_products && \
-#   terraform apply -target=null_resource.seed_dynamodb_products -auto-approve
+# Seed AWS DynamoDB tables
+make seed-aws
+
+# Or if you need to seed with specific region/tables
+python3 scripts/aws-dynamodb-seed.py \
+  --products-table "$(terraform output -raw products_table_name)" \
+  --carts-table "$(terraform output -raw carts_table_name)" \
+  --region "$(terraform output -raw aws_region)"
 ```
 
 ### 6) Update variables and re-apply

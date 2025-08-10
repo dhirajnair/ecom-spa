@@ -7,7 +7,7 @@
 - **Node.js 18+** (for frontend)
 - **Make** (optional, for shortcuts)
 
-## 🐳 Local Docker Setup (Recommended)
+## 🐳 Local Docker Setup (Development Mode)
 
 ### First Time Setup
 
@@ -19,7 +19,7 @@ cp frontend/env.example frontend/.env
 # 2. Start all services
 make dev
 # OR manually:
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker-compose up --build
 
 # 3. Setup database (first time only)
 make setup-dynamodb
@@ -34,13 +34,13 @@ python scripts/setup-dynamodb.py
 make dev
 
 # Stop services  
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml down
+docker-compose down
 
 # Restart specific service
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml restart cart-service
+docker-compose restart cart-service
 
 # View logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+docker-compose logs -f
 ```
 
 ### Access URLs

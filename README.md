@@ -72,7 +72,7 @@ cp frontend/env.example frontend/.env
 
 # 2. Start all services
 make dev
-# OR: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# OR: docker-compose -f docker-compose.yml up --build
 
 # 3. Setup database (first time only)
 make setup-dynamodb
@@ -126,15 +126,17 @@ terraform plan -no-color | tee plan.txt  # Review changes
 terraform apply -auto-approve
 ```
 
+**3.1. Seed DynamoDB** (to be done every time after "destroy")
+```bash
+cd ../scripts
+pip install boto3
+python aws-setup-dynamodb.py
+```
+
 **4. Get Deployment URLs**
 ```bash
 terraform output api_gateway_url
 terraform output -json cognito_config
-```
-
-**5. Optional: Seed Database**
-```bash
-terraform apply -target=null_resource.seed_dynamodb_products -auto-approve
 ```
 
 ### Daily Development Commands

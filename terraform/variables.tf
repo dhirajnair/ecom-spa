@@ -168,3 +168,16 @@ variable "api_gateway_cors_origins" {
   type        = list(string)
   default     = ["*"]
 }
+
+# DynamoDB Seeding Configuration
+variable "enable_product_seeding" {
+  description = "Enable automatic seeding of sample products (only if table is empty)"
+  type        = bool
+  default     = true
+}
+
+variable "force_reseed_products" {
+  description = "Force re-seeding of products table (WARNING: will delete existing data)"
+  type        = bool
+  default     = false
+}

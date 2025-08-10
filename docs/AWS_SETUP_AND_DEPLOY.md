@@ -41,20 +41,17 @@ terraform plan -no-color | tee plan.txt
 terraform apply -auto-approve
 ```
 
+### Seed DynamoDB (to be done every time after "destroy")
+```bash
+
+cd ../scripts
+pip install boto3
+python aws-setup-dynamodb.py
+```
+
 ## 🧹 Teardown
 
 ```bash
 cd terraform && terraform destroy -auto-approve
 ```
 
-## 🧪 Populate DynamoDB (via Terraform)
-
-```bash
-# Apply only the DynamoDB seed step
-cd terraform
-terraform apply -target=null_resource.seed_dynamodb_products -auto-approve
-
-# Optional: force re-seed
-# terraform taint null_resource.seed_dynamodb_products && \
-#   terraform apply -target=null_resource.seed_dynamodb_products -auto-approve
-```

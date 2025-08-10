@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from .routes import router
-from .database import create_tables, init_sample_data
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -37,10 +37,8 @@ app.include_router(router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database and sample data on startup"""
+    """Initialize service on startup"""
     logger.info("Starting Product Service...")
-    create_tables()
-    init_sample_data()
     logger.info("Product Service started successfully!")
 
 

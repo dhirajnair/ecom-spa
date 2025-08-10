@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 DynamoDB setup script for e-commerce microservices
 Sets up local DynamoDB tables and initializes sample data
@@ -85,15 +86,15 @@ def create_products_table():
         waiter = dynamodb.get_waiter('table_exists')
         waiter.wait(TableName=PRODUCTS_TABLE)
         
-        print(f"✅ Created {PRODUCTS_TABLE} table")
+        print("[SUCCESS] Created {} table".format(PRODUCTS_TABLE))
         return True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceInUseException':
-            print(f"⚠️ {PRODUCTS_TABLE} table already exists")
+            print("[WARNING] {} table already exists".format(PRODUCTS_TABLE))
             return True
         else:
-            print(f"❌ Error creating {PRODUCTS_TABLE} table: {e}")
+            print("[ERROR] Error creating {} table: {}".format(PRODUCTS_TABLE, e))
             return False
 
 def create_carts_table():
@@ -122,15 +123,15 @@ def create_carts_table():
         waiter = dynamodb.get_waiter('table_exists')
         waiter.wait(TableName=CARTS_TABLE)
         
-        print(f"✅ Created {CARTS_TABLE} table")
+        print("[SUCCESS] Created {} table".format(CARTS_TABLE))
         return True
         
     except ClientError as e:
         if e.response['Error']['Code'] == 'ResourceInUseException':
-            print(f"⚠️ {CARTS_TABLE} table already exists")
+            print("[WARNING] {} table already exists".format(CARTS_TABLE))
             return True
         else:
-            print(f"❌ Error creating {CARTS_TABLE} table: {e}")
+            print("[ERROR] Error creating {} table: {}".format(CARTS_TABLE, e))
             return False
 
 def init_sample_products():
@@ -142,7 +143,7 @@ def init_sample_products():
     try:
         response = table.scan(Limit=1)
         if response['Items']:
-            print("⚠️ Sample products already exist")
+            print("[WARNING] Sample products already exist")
             return True
     except ClientError:
         pass
@@ -200,11 +201,11 @@ def init_sample_products():
             for product in sample_products:
                 batch.put_item(Item=product)
         
-        print("✅ Sample products initialized successfully!")
+        print("[SUCCESS] Sample products initialized successfully!")
         return True
         
     except ClientError as e:
-        print(f"❌ Error initializing sample products: {e}")
+        print("[ERROR] Error initializing sample products: {}".format(e))
         return False
 
 def list_tables():
@@ -215,14 +216,14 @@ def list_tables():
         response = dynamodb.list_tables()
         tables = response['TableNames']
         
-        print(f"\n📋 DynamoDB Tables ({len(tables)}):")
+        print("\n[INFO] DynamoDB Tables ({}):".format(len(tables)))
         for table in tables:
-            print(f"  • {table}")
+            print("  • {}".format(table))
         
         return tables
         
     except ClientError as e:
-        print(f"❌ Error listing tables: {e}")
+        print("[ERROR] Error listing tables: {}".format(e))
         return []
 
 def check_dynamodb_connection():
@@ -230,46 +231,46 @@ def check_dynamodb_connection():
     try:
         dynamodb = get_dynamodb_client()
         dynamodb.list_tables()
-        print("✅ DynamoDB connection successful")
+        print("[SUCCESS] DynamoDB connection successful")
         return True
     except Exception as e:
-        print(f"❌ DynamoDB connection failed: {e}")
-        print(f"   Make sure DynamoDB Local is running on {DYNAMODB_ENDPOINT}")
+        print("[ERROR] DynamoDB connection failed: {}".format(e))
+        print("   Make sure DynamoDB Local is running on {}".format(DYNAMODB_ENDPOINT))
         return False
 
 def main():
     """Main setup function"""
-    print("🚀 E-commerce DynamoDB Setup")
+    print("[SETUP] E-commerce DynamoDB Setup")
     print("=" * 40)
-    print(f"DynamoDB Endpoint: {DYNAMODB_ENDPOINT}")
-    print(f"AWS Region: {AWS_REGION}")
+    print("DynamoDB Endpoint: {}".format(DYNAMODB_ENDPOINT))
+    print("AWS Region: {}".format(AWS_REGION))
     print()
     
     # Check connection
     if not check_dynamodb_connection():
-        print("\n💡 To start DynamoDB Local:")
+        print("\n[INFO] To start DynamoDB Local:")
         print("   docker run -p 8000:8000 amazon/dynamodb-local")
         sys.exit(1)
     
     # Create tables
-    print("\n🔧 Creating tables...")
+    print("\n[INFO] Creating tables...")
     products_success = create_products_table()
     carts_success = create_carts_table()
     
     if not (products_success and carts_success):
-        print("❌ Failed to create some tables")
+        print("[ERROR] Failed to create some tables")
         sys.exit(1)
     
     # Initialize sample data
-    print("\n🌱 Initializing sample data...")
+    print("\n[INFO] Initializing sample data...")
     if not init_sample_products():
-        print("❌ Failed to initialize sample data")
+        print("[ERROR] Failed to initialize sample data")
         sys.exit(1)
     
     # List tables
     list_tables()
     
-    print("\n🎉 DynamoDB setup completed successfully!")
+    print("\n[SUCCESS] DynamoDB setup completed successfully!")
     print("\nYou can now start the services with:")
     print("  make up")
     print("  # OR")

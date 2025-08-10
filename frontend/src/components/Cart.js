@@ -69,16 +69,22 @@ const Cart = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-        {items.length > 0 && (
-          <button
-            onClick={handleClearCart}
-            className="btn btn-secondary text-red-600 hover:bg-red-50"
-          >
-            Clear Cart
-          </button>
-        )}
+      <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b border-blue-200 shadow-lg mb-8 rounded-2xl">
+        <div className="container mx-auto px-6 py-12">
+          <div className="flex items-center justify-between">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent">
+              Shopping Cart
+            </h1>
+            {items.length > 0 && (
+              <button
+                onClick={handleClearCart}
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl hover:from-red-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                Clear Cart
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {items.length === 0 ? (
