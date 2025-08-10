@@ -201,7 +201,63 @@ curl -X POST -H "Authorization: Bearer $JWT_TOKEN" \
 
 ### AWS Production Authentication
 
-**AWS Cognito Authentication Flow:**
+**AWS Cognito Authentication Flow (ASCII Diagram):**
+
+```
+User → Frontend → Cognito Hosted UI → User Pool → Frontend
+ |                                                     ↓
+ |                                              Access Token (JWT)
+ |                                                     ↓
+ └─────────────→ API Gateway ←────────────────────────┘
+                     ↓
+              ┌───────────────────────┐
+              │Cognito Token Validation
+              └───────────────────────┘
+                     ↓
+               Lambda Function
+                     ↓
+                 DynamoDB
+```
+
+**Cognito Token Validation Process:**
+
+```
+JWT Token → Lambda Function
+             ↓
+    ┌────────────────────────┐
+    │ 1. Get Token Header    │ → Extract 'kid' (Key ID)
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 2. Fetch JWKS          │ → GET cognito-idp.{region}.amazonaws.com/
+    │                        │   {user-pool-id}/.well-known/jwks.json
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 3. Match RSA Key       │ → Find key with matching 'kid'
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 4. Verify Signature    │ → RS256 algorithm verification
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 5. Validate Claims     │ → audience: client_id (jose library)
+    │                        │   issuer: cognito user pool (jose library)
+    │                        │   exp: not expired (jose library)
+    │                        │   token_use: "access" (manual check)
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 6. Extract User Info   │ → sub (user_id)
+    │                        │   cognito:username
+    │                        │   email
+    └────────────────────────┘
+             ↓
+         UserToken Object → Continue to Business Logic
+```
+
+**Detailed Step-by-Step Flow:**
 
 ```bash
 # 1. Get Cognito configuration after deployment
