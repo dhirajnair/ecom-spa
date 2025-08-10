@@ -167,6 +167,48 @@ cd terraform && terraform destroy -auto-approve
 
 ### Local Development Authentication
 
+**Local MockAuth Flow:**
+
+```
+User → Frontend → Login → MockAuth/Local JWT → Frontend →   
+ |                                                        ↓
+ |                                                 Access Token (JWT)
+ |                                                        ↓
+ └─────────────→ Cart/Product Service ←──────────────────┘
+                        ↓
+              ┌───────────────────────┐
+              │ Local Token Validation│
+              │ (auth_utils.py)       │
+              └───────────────────────┘
+                        ↓
+                Service Logic
+                        ↓
+                 DynamoDB Local
+```
+
+**Local Token Validation Process:**
+
+```
+JWT Token → Service Function
+             ↓
+    ┌────────────────────────┐
+    │ 1. Decode JWT          │ → Using JWT_SECRET_KEY (HS256)
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 2. Validate Claims     │ → exp: not expired
+    │                        │   (NO audience/issuer check)
+    └────────────────────────┘
+             ↓
+    ┌────────────────────────┐
+    │ 3. Extract User Info   │ → sub (user_id)
+    │                        │   username
+    │                        │   email (optional)
+    └────────────────────────┘
+             ↓
+         UserToken Object → Continue to Business Logic
+```
+
 **Pre-configured Test Users:**
 - **Admin**: `admin@example.com` / `admin123`
 - **User**: `user@example.com` / `user123`
