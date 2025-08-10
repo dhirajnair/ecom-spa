@@ -27,96 +27,20 @@
 - **Infrastructure-as-Code**: Complete Terraform automation for reproducible deployments
 
 ### Production Architecture (AWS Serverless)
-
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        User["👤 User<br/>Browser/Mobile"]
-    end
-    
-    subgraph "Frontend Layer"
-        Frontend["📱 React SPA<br/>Single Page Application<br/><small>Frontend Lambda</small>"]
-    end
-    
-    subgraph "API Layer"
-        APIGateway["🌐 AWS API Gateway<br/>Central Request Router<br/><small>All HTTP Requests</small>"]
-    end
-    
-    subgraph "Service Layer"
-        StaticAssets["📁 Static Assets<br/>HTML, CSS, JS<br/><small>Frontend Lambda</small>"]
-        ProductService["🛍️ Product Service<br/>Catalog Management<br/><small>Lambda Function</small>"]
-        CartService["🛒 Cart Service<br/>Shopping Cart<br/><small>Lambda Function</small>"]
-        Cognito["🔐 AWS Cognito<br/>User Authentication<br/><small>Identity Provider</small>"]
-    end
-    
-    subgraph "Data Layer"
-        ProductDB["📊 Products Table<br/>DynamoDB<br/><small>NoSQL Database</small>"]
-        CartDB["📊 Carts Table<br/>DynamoDB<br/><small>NoSQL Database</small>"]
-    end
-    
-    %% Flow connections
-    User --> Frontend
-    Frontend --> APIGateway
-    
-    APIGateway --> |"GET /static/*<br/>Assets"| StaticAssets
-    APIGateway --> |"GET,POST /api/products/*<br/>Product APIs"| ProductService
-    APIGateway --> |"GET,POST /api/cart/*<br/>Cart APIs"| CartService
-    APIGateway --> |"POST /auth/*<br/>Authentication"| Cognito
-    
-    ProductService --> ProductDB
-    CartService --> CartDB
-    
-    %% Styling
-    style User fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
-    style Frontend fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px,color:#000
-    style APIGateway fill:#fff3e0,stroke:#ef6c00,stroke-width:4px,color:#000
-    style StaticAssets fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    style ProductService fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#000
-    style CartService fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#000
-    style Cognito fill:#fff8e1,stroke:#f57f17,stroke-width:2px,color:#000
-    style ProductDB fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
-    style CartDB fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+```
+Frontend (React SPA) → API Gateway → Static Assets (Frontend Lambda)
+                            ↓
+                      Product Service (Lambda) → DynamoDB (Products)
+                            ↓
+                      Cart Service (Lambda) → DynamoDB (Carts)
+                            ↓
+                      AWS Cognito (Authentication)
 ```
 
 ### Local Development Architecture
-
-```mermaid
-graph TB
-    subgraph "Client Layer"
-        Dev["👤 Developer<br/>Local Browser<br/><small>localhost:3001</small>"]
-    end
-    
-    subgraph "Docker Desktop Environment"
-        subgraph "Frontend Layer"
-            ReactApp["📱 React SPA<br/>Development Server<br/><small>Docker Container • Port 3001</small>"]
-        end
-        
-        subgraph "Service Layer"
-            ProductAPI["🛍️ Product Service<br/>FastAPI + Uvicorn<br/><small>Docker Container • Port 8001</small>"]
-            CartAPI["🛒 Cart Service<br/>FastAPI + Uvicorn<br/><small>Docker Container • Port 8002</small>"]
-        end
-        
-        subgraph "Data Layer"
-            DynamoLocal["📊 DynamoDB Local<br/>NoSQL Development DB<br/><small>Docker Container • Port 8000</small>"]
-        end
-    end
-    
-    %% Flow connections
-    Dev --> ReactApp
-    ReactApp --> ProductAPI
-    ReactApp --> CartAPI
-    
-    ProductAPI --> DynamoLocal
-    CartAPI --> DynamoLocal
-    
-    ProductAPI -.-> |"Cross-service<br/>Communication"| CartAPI
-    
-    %% Styling
-    style Dev fill:#e1f5fe,stroke:#0277bd,stroke-width:2px,color:#000
-    style ReactApp fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px,color:#000
-    style ProductAPI fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#000
-    style CartAPI fill:#e0f2f1,stroke:#00695c,stroke-width:2px,color:#000
-    style DynamoLocal fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+```
+React SPA (Docker :3001) ↔ Product Service (Docker :8001) ↔ DynamoDB Local (Docker :8000)
+                         ↔ Cart Service (Docker :8002) ↗
 ```
 
 **Technology Stack**:
@@ -335,48 +259,16 @@ curl -H "Authorization: Bearer $COGNITO_JWT_TOKEN" \
 
 ### Key Terraform Modules
 
-```mermaid
-graph TD
-    subgraph "Infrastructure as Code"
-        Root["🏗️ terraform/main.tf<br/>Root Configuration<br/><small>Orchestrates all modules</small>"]
-        Variables["⚙️ variables.tf<br/>Configuration<br/><small>Environment parameters</small>"]
-    end
-    
-    subgraph "Core Infrastructure"
-        DynamoDB["📊 modules/dynamodb/<br/>Database Layer<br/><small>Tables & indexes</small>"]
-        ECR["📦 modules/ecr/<br/>Container Registry<br/><small>Docker repositories</small>"]
-    end
-    
-    subgraph "Compute & API"
-        Lambda["⚡ modules/lambda/<br/>Serverless Functions<br/><small>Business logic</small>"]
-        APIGateway["🌐 modules/api-gateway/<br/>API Management<br/><small>REST API & routing</small>"]
-    end
-    
-    subgraph "Security & Auth"
-        Cognito["🔐 modules/cognito/<br/>Identity Provider<br/><small>User authentication</small>"]
-    end
-    
-    %% Dependencies
-    Root --> DynamoDB
-    Root --> ECR
-    Root --> Lambda
-    Root --> APIGateway
-    Root --> Cognito
-    Variables --> Root
-    
-    ECR --> Lambda
-    Lambda --> APIGateway
-    DynamoDB --> Lambda
-    Cognito --> APIGateway
-    
-    %% Styling
-    style Root fill:#673ab7,color:#fff,stroke:#4527a0,stroke-width:4px
-    style Variables fill:#f5f5f5,stroke:#616161,stroke-width:2px,color:#000
-    style DynamoDB fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px,color:#000
-    style ECR fill:#fff3e0,stroke:#ef6c00,stroke-width:2px,color:#000
-    style Lambda fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-    style APIGateway fill:#fff8e1,stroke:#f57f17,stroke-width:2px,color:#000
-    style Cognito fill:#fce4ec,stroke:#c2185b,stroke-width:2px,color:#000
+```
+terraform/
+├── main.tf                    # Root configuration and resource coordination
+├── modules/
+│   ├── dynamodb/             # Database tables and indexes
+│   ├── ecr/                  # Container registries with lifecycle policies
+│   ├── lambda/               # Serverless functions with container images
+│   ├── api-gateway/          # REST API with routing and CORS
+│   └── cognito/              # Authentication service with Hosted UI
+└── variables.tf              # Configurable deployment parameters
 ```
 
 ### Terraform Workflow
