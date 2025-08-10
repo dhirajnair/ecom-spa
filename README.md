@@ -12,6 +12,8 @@
 - [Architecture and Design Choices](#architecture-and-design-choices)
 - [Setup, Deployment, and Run Instructions](#setup-deployment-and-run-instructions)
 - [Authentication Flow Testing Instructions](#authentication-flow-testing-instructions)
+  - [Local Development Authentication](#local-development-authentication)
+  - [AWS Production Authentication](#aws-production-authentication) 
 - [Terraform Infrastructure Template](#terraform-infrastructure-template)
 
 ## Architecture and Design Choices
