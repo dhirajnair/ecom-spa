@@ -201,7 +201,7 @@ curl -X POST -H "Authorization: Bearer $JWT_TOKEN" \
 
 ### AWS Production Authentication
 
-**AWS Cognito Authentication Flow (ASCII Diagram):**
+**AWS Cognito Authentication Flow:**
 
 ```
 User → Frontend → Cognito Hosted UI → User Pool → Frontend
@@ -245,7 +245,7 @@ JWT Token → Lambda Function
     │ 5. Validate Claims     │ → audience: client_id (jose library)
     │                        │   issuer: cognito user pool (jose library)
     │                        │   exp: not expired (jose library)
-    │                        │   token_use: "access" (manual check)
+    │                        │   token_use: "access" (manual check for access token only. NO ROLE CHECK YET)
     └────────────────────────┘
              ↓
     ┌────────────────────────┐
